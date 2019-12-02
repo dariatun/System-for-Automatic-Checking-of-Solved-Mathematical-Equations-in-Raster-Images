@@ -1,4 +1,3 @@
-import os
 import os.path
 
 path = '/Users/dariatunina/mach-lerinig/numbers-eqs/'
