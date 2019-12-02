@@ -11,9 +11,10 @@ sys.path.append('/Users/dariatunina/mach-lerinig/DataAugmentationForObjectDetect
 from data_aug.data_aug import *
 from data_aug.bbox_util import *
 
-bg_imgs = ["help_stuff/blank_page2.png", "help_stuff/crumpled.jpg", "help_stuff/crump_fold.jpg",
-           "help_stuff/crump_old.jpg", "help_stuff/folded.jpg",
-           "help_stuff/grey.jpg", "help_stuff/paper.jpg"]
+bg_imgs = ["help_stuff/blank_page2.png", "help_stuff/crumpled.jpg", #"help_stuff/crump_fold.jpg",
+           #"help_stuff/crump_old.jpg", "help_stuff/folded.jpg",
+           #"help_stuff/grey.jpg",
+           "help_stuff/paper.jpg"]
 
 
 def rotate_img(img, bboxes):
@@ -118,7 +119,7 @@ def adjust_gamma(image, gamma=1.0):
 
 
 def change_sizeimg(img):
-    change_to = rd.randint(img.size[0] - 3, img.size[0] + 15)
+    change_to = rd.randint(img.size[0] - 3, img.size[0] + 10)
     wpercent = (change_to / float(img.size[0]))
     hsize = int((float(img.size[1]) * float(wpercent)))
     return img.resize((change_to, hsize), Image.ANTIALIAS)

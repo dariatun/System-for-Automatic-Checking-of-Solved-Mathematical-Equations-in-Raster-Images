@@ -157,10 +157,13 @@ def generate_images(path, train_img):
             while curr_indx in equations_with_h_digits:
                 curr_indx = rd.randint(0, length - 1)
             equations_with_h_digits.append(curr_indx)
-            h_digit_img = get_handwritten_digit(train_img)
-            h_digit_img = change_sizeimg(h_digit_img)
-            offset = (int(border[curr_indx][2] + 10), int(border[curr_indx][1]))
-            img.paste(h_digit_img, offset)
+            h_x = 0
+            for j in range(0, rd.randint(1,2)):
+                h_digit_img = get_handwritten_digit(train_img)
+                h_digit_img = change_sizeimg(h_digit_img)
+                offset = (int(border[curr_indx][2] + 10 + h_x), int(border[curr_indx][1]))
+                img.paste(h_digit_img, offset)
+                h_x = h_digit_img.size[0]
             count += 1
 
         full_path = get_full_path(curr_img_path, curr_img_extension, 4)
