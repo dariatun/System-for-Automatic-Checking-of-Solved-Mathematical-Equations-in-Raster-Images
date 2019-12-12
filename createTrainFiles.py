@@ -7,7 +7,11 @@ import os
 import loremipsum as li
 
 from utils import *
-from MNIST_Dataset_Loader.mnist_loader import MNIST
+import matplotlib
+matplotlib.use('Agg')
+
+sys.path.append('/home.stud/tunindar/bachelorWork/MNIST_Dataset_Loader')
+from mnist_loader import MNIST
 
 symbols = ['+', '-']
 fonts = ["fonts/times-new-roman.ttf", "fonts/arial.ttf"]
@@ -117,7 +121,8 @@ def add_text(x, y, font, draw, color, width):
 def generate_images(path, train_img):
     path_img = path  # + 'images/'
     path_lbl = path  # + 'labels/'
-    for i in range(0, 10):
+    for i in range(0, 6000):
+        print(i)
         # initialise
         bg_path = get_bg_path()
         img = Image.open(bg_path)
@@ -191,15 +196,15 @@ def generate_images(path, train_img):
 
 
 if __name__ == "__main__":
-    path = '/Users/dariatunina/mach-lerinig/numbers-eqs/'
+    path = '/datagrid/personal/tunindar/numbers-eqs/'
 
-    data = MNIST('./MNIST_Dataset_Loader/inverted/')
+    data = MNIST('./MNIST_Dataset_Loader/dataset/')
     img_train, _ = data.load_testing()
     train_img = np.array(img_train)
     delete_old_files(path)
 
-    h_digit_img = get_handwritten_digit(train_img)
-    save_image(h_digit_img, path + 'digit.png')
+    # h_digit_img = get_handwritten_digit(train_img)
+    # save_image(h_digit_img, path + 'digit.png')
 
     generate_images(path, train_img)
 

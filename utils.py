@@ -5,13 +5,15 @@ import numpy as np
 import os
 from PIL import Image
 import cv2
+import matplotlib
+matplotlib.use('Agg')
 
-sys.path.append('/Users/dariatunina/mach-lerinig/DataAugmentationForObjectDetection')
+sys.path.append('/home.stud/tunindar/DataAugmentationForObjectDetection')
 
 from data_aug.data_aug import *
 from data_aug.bbox_util import *
 
-bg_imgs = ["help_stuff/blank_page2.png", "help_stuff/crumpled.jpg", #"help_stuff/crump_fold.jpg",
+bg_imgs = ["help_stuff/plain-white-paper.jpg", "help_stuff/crumpled.jpg", #"help_stuff/crump_fold.jpg",
            #"help_stuff/crump_old.jpg", "help_stuff/folded.jpg",
            #"help_stuff/grey.jpg",
            "help_stuff/paper.jpg"]
@@ -64,11 +66,11 @@ def save_labels(borders, path_lbl, i, j, width, height):
     for border in borders:
         obj_width = border[2] - border[0]
         obj_height = border[3] - border[1]
-        center_x = int(border[0] + (obj_width / 2))
-        center_y = int(border[1] + (obj_height / 2))
-
-        file.write(str(int(border[4])) + ' ' + str(center_x / width) + ' ' +
-                   str(center_y / height) + ' ' + str(obj_width / width) + ' ' + str(obj_height / height))
+        center_x = (border[0] + (obj_width / 2))
+        center_y = (border[1] + (obj_height / 2))
+        # print(center_x, width, center_y, height)
+        file.write(str(int(border[4])) + ' ' + str(center_x / float(width)) + ' ' +
+                   str(center_y / float(height)) + ' ' + str(obj_width / width) + ' ' + str(obj_height / height))
         file.write('\n')
 
 
