@@ -163,12 +163,18 @@ def generate_images(path, train_img):
                 curr_indx = rd.randint(0, length - 1)
             equations_with_h_digits.append(curr_indx)
             h_x = 0
+            st_x = border[curr_indx][2] + 10
+            st_y = border[curr_indx][1]
+            all_w = 0
+            all_h = 0
             for j in range(0, rd.randint(1,2)):
-                h_digit_img = get_handwritten_digit(train_img)
-                h_digit_img = change_sizeimg(h_digit_img)
-                offset = (int(border[curr_indx][2] + 10 + h_x), int(border[curr_indx][1]))
+                h_digit_img = change_sizeimg(get_handwritten_digit(train_img))
+                offset = (int(st_x + h_x), int(st_y))
                 img.paste(h_digit_img, offset)
                 h_x = h_digit_img.size[0]
+                all_w += h_x
+                all_h = max(all_h, h_digit_img.size[0])
+            border = np.vstack([border, [st_x, st_y, st_x + all_w, st_y + all_w, 1]])
             count += 1
 
         full_path = get_full_path(curr_img_path, curr_img_extension, 4)
