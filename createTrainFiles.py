@@ -15,7 +15,8 @@ from mnist_loader import MNIST
 
 symbols = ['+', '-']
 fonts = ["fonts/times-new-roman.ttf", "fonts/arial.ttf"]
-
+MAX_NUMBER_OF_EQ_IN_COLUMN = 6
+MIN_NUMBER_OF_EQ_IN_COLUMN = 2
 
 def add_next_line_symbols(s, x, width, font):
     length = font.getsize(s)[0]
@@ -84,7 +85,7 @@ def get_equation(x, y, font, border, draw):
 
 
 def generate_equation_column(x, y, font, border, height, draw, color, spacing):
-    iterations = rd.randint(80, 80)
+    iterations = rd.randint(MIN_NUMBER_OF_EQ_IN_COLUMN, MAX_NUMBER_OF_EQ_IN_COLUMN)
     currIter = 0
     while currIter != iterations:
         # print(str(height) + ' ' + str(check))
@@ -121,7 +122,7 @@ def add_text(x, y, font, draw, color, width):
 def generate_images(path, train_img):
     path_img = path  # + 'images/'
     path_lbl = path  # + 'labels/'
-    for i in range(0, 6000):
+    for i in range(0, 5000):
         print(i)
         # initialise
         bg_path = get_bg_path()
@@ -196,7 +197,7 @@ def generate_images(path, train_img):
 
 
 if __name__ == "__main__":
-    path = '/datagrid/personal/tunindar/numbers-eqs/'
+    path = '/datagrid/personal/tunindar/numbers-eqs1/'
 
     data = MNIST('./MNIST_Dataset_Loader/dataset/')
     img_train, _ = data.load_testing()
