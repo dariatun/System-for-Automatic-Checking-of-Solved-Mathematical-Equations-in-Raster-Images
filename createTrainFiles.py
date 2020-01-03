@@ -15,6 +15,8 @@ from MNIST_Dataset_Loader.mnist_loader import MNIST
 symbols = ['+', '-']
 fonts = ["fonts/times-new-roman.ttf", "fonts/arial.ttf"]
 bg_imgs = []
+MAX_NUMBER_OF_EQ_IN_COLUMN = 6
+MIN_NUMBER_OF_EQ_IN_COLUMN = 3
 
 
 def get_bg_path():
@@ -70,7 +72,7 @@ def generate_number_in_range(min_range, max_range):
 
 def generate_number():
     s = ''
-    for j in range(0, rd.randint(2, 2)):
+    for j in range(0, rd.randint(1, 2)):
         if j == 0:
             num = rd.randint(1, 9)
         else:
@@ -109,10 +111,10 @@ def generate_equation_column(x, y, font, border, height, draw, color, spacing, i
 
 
 def add_equations(x, y, font, draw, color, width, height):
-    num_of_columns = 2#rd.randint(1, 2)
+    num_of_columns = rd.randint(1, 2)
     border = None
     spacing = rd.randint(10, 30)
-    iterations = rd.randint(3, 6)
+    iterations = rd.randint(MIN_NUMBER_OF_EQ_IN_COLUMN, MAX_NUMBER_OF_EQ_IN_COLUMN)
     new_y, border = generate_equation_column(x, y, font, border, height, draw, color, spacing, iterations)
     if num_of_columns == 1:
         return new_y, border.astype(np.float)
@@ -133,7 +135,7 @@ def add_text(x, y, font, draw, color, width):
 def generate_images(path, train_img):
     path_img = path  # + 'images/'
     path_lbl = path  # + 'labels/'
-    for i in range(0, 10):
+    for i in range(0, 5000):
         print(i)
         # initialise
         bg_path = get_bg_path()
@@ -142,9 +144,9 @@ def generate_images(path, train_img):
         size = img.size
         width = size[0]
         height = size[1]
-        x = rd.randint(40, 40)
+        x = rd.randint(20, 40)
         y = rd.randint(40, 100)
-        font = ImageFont.truetype(fonts[rd.randint(0, 1)], rd.randint(40, 40))
+        font = ImageFont.truetype(fonts[rd.randint(0, 1)], rd.randint(35, 40))
         color = rd.randint(0, 50)
 
         # add start text
@@ -227,7 +229,7 @@ def generate_images(path, train_img):
 
 
 if __name__ == "__main__":
-    #path = '/datagrid/personal/tunindar/numbers-eqs/'
+    #path = '/datagrid/personal/tunindar/numbers-eqs1/'
     get_bg_imgs('bg_images')
     path = '/Users/dariatunina/mach-lerinig/numbers-eqs/'
     data = MNIST('./MNIST_Dataset_Loader/dataset/')
