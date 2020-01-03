@@ -2,8 +2,8 @@ import os.path
 
 path = '/datagrid/personal/tunindar/numbers-eqs/'
 save_path = '/datagrid/personal/tunindar/numbers-eqs'
-trainFile = open('/home.stud/tunindar/new/darknet/data/train-eq.txt', 'w+')
-testFile = open('/home.stud/tunindar/new/darknet/data/test-eq.txt', 'w+')
+trainFile = open('/home.stud/tunindar/new/darknet/data/train-eq1.txt', 'w+')
+testFile = open('/home.stud/tunindar/new/darknet/data/test-eq1.txt', 'w+')
 count = 1
 trainCount = 0
 testCount = 0
