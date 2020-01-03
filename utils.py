@@ -6,22 +6,34 @@ import os
 from PIL import Image
 import cv2
 import matplotlib
-matplotlib.use('Agg')
 
-sys.path.append('/home.stud/tunindar/DataAugmentationForObjectDetection')
+matplotlib.use('Agg')
+from mask_generation import *
+
+sys.path.append('/Users/dariatunina/mach-lerinig/DataAugmentationForObjectDetection')
+# sys.path.append('/home.stud/tunindar/DataAugmentationForObjectDetection')
 
 from data_aug.data_aug import *
 from data_aug.bbox_util import *
 
-bg_imgs = ["help_stuff/plain-white-paper.jpg", "help_stuff/crumpled.jpg", #"help_stuff/crump_fold.jpg",
-           #"help_stuff/crump_old.jpg", "help_stuff/folded.jpg",
-           #"help_stuff/grey.jpg",
-           "help_stuff/paper.jpg"]
+blues = [
+    [0, 0, 139],  # darkblue
+    [0, 0, 128],  # navy
+    [0, 0, 205],  # mediumblue
+    # [0, 0, 255],  # blue
+    [25, 25, 112],  # midnightblue
+    # [89, 28, 212],  # bic blue pen
+    [0, 15, 85]  # blue ink pen
+]
+
+
+def choose_blue_colour():
+    return blues[rd.randint(0, len(blues) - 1)]
 
 
 def rotate_img(img, bboxes):
     # print(bboxes)
-    return RandomRotate(20)(img.copy(), bboxes.copy())
+    return RandomRotate(10)(img.copy(), bboxes.copy())
     # plotted_img = draw_rect(img_, bboxes_)
     # plt.imshow(plotted_img)
     # plt.axis("off")
@@ -32,12 +44,12 @@ def shear_img(img, bboxes):
 
 
 def rotate_or_shear_img(img, bboxes):
-    rand = rd.randint(0, 1)
-    if rand == 0:
-        return rotate_img(img, bboxes)
-    elif rand == 1:
-        return shear_img(img, bboxes)
-    return img, bboxes
+    # rand = 1 #rd.randint(0, 1)
+    # if rand == 0:
+    img, bboxes = rotate_img(img, bboxes)
+    # elif rand == 1:
+    return shear_img(img, bboxes)
+    # return img, bboxes
 
 
 def save_image(data, fn):
@@ -54,11 +66,6 @@ def save_image(data, fn):
     ax.imshow(data)
     plt.savefig(fn, dpi=height)
     plt.close()
-
-
-def get_bg_path():
-    length = len(bg_imgs)
-    return bg_imgs[rd.randint(0, length - 1)]
 
 
 def save_labels(borders, path_lbl, i, j, width, height):
@@ -109,19 +116,60 @@ def delete_old_files(path):
             print(e)
 
 
-def get_handwritten_digit(imgs):
-    return Image.fromarray((np.reshape(-1-imgs[rd.randint(0, len(imgs) - 1)], (28, 28))).astype(np.uint8))
+def get_handwritten_digit(imgs, font_height):
+    return change_sizeimg(Image.fromarray(get_image_array(imgs)), font_height)
 
 
 def adjust_gamma(image, gamma=1.0):
     invGamma = 1.0 / gamma
     table = np.array([((i / 255.0) ** invGamma) * 255
-    for i in np.arange(0, 256)]).astype("uint8")
+                      for i in np.arange(0, 256)]).astype("uint8")
     return cv2.LUT(image, table)
 
 
-def change_sizeimg(img):
-    change_to = rd.randint(img.size[0] - 3, img.size[0] + 10)
+def change_sizeimg(img, font_height):
+    change_to = font_height + 5#rd.randint(font_height - 5, font_height + 5) #img.size[0] + 10#rd.randint(img.size[0] - 3, img.size[0] + 10)
     wpercent = (change_to / float(img.size[0]))
     hsize = int((float(img.size[1]) * float(wpercent)))
     return img.resize((change_to, hsize), Image.ANTIALIAS)
+
+
+def get_image_array(imgs):
+    return (np.reshape(-1 - imgs[rd.randint(0, len(imgs) - 1)], (28, 28))).astype(np.uint8)
+
+
+def get_digit(imgs, offset, bg_img, font_height):
+    img_array = np.stack((np.array(get_handwritten_digit(imgs, font_height)),) * 3, axis=-1)
+    blue_colour = choose_blue_colour()
+    bg_img_array = np.array(bg_img)
+    for i in range(0, img_array.shape[0]):
+        for j in range(0, img_array.shape[1]):
+            if 0 <= np.sum(img_array[j][i]) <= 100 * 3:
+                img_array[j][i] = blue_colour
+            elif 230 * 3 <= np.sum(img_array[j][i]) <= 255 * 3:
+                img_array[j][i] = bg_img_array[j + offset[1]][i + offset[0]]
+    return Image.fromarray(img_array)
+
+
+def add_parallel_light(image, light_position=None, direction=None, max_brightness=255, min_brightness=0,
+                       mode="gaussian", linear_decay_rate=None, transparency=None):
+    """
+    Add mask generated from parallel light to given image
+    """
+    if transparency is None:
+        transparency = random.uniform(0.5, 0.85)
+    frame = cv2.imread(image)
+    height, width, _ = frame.shape
+    hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+    mask = generate_parallel_light_mask(mask_size=(width, height),
+                                        position=light_position,
+                                        direction=direction,
+                                        max_brightness=max_brightness,
+                                        min_brightness=min_brightness,
+                                        mode=mode,
+                                        linear_decay_rate=linear_decay_rate)
+    hsv[:, :, 2] = hsv[:, :, 2] * transparency + mask * (1 - transparency)
+    frame = cv2.cvtColor(hsv, cv2.COLOR_HSV2BGR)
+    frame[frame > 255] = 255
+    frame = np.asarray(frame, dtype=np.uint8)
+    return frame

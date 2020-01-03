@@ -1,8 +1,6 @@
 import numpy as np
 import cv2
-from PIL import Image
-from PIL import ImageFont
-from PIL import ImageDraw
+from PIL import Image, ImageEnhance, ImageFont, ImageDraw
 import os
 import loremipsum as li
 
@@ -10,11 +8,24 @@ from utils import *
 import matplotlib
 matplotlib.use('Agg')
 
-sys.path.append('/home.stud/tunindar/bachelorWork/MNIST_Dataset_Loader')
-from mnist_loader import MNIST
+from MNIST_Dataset_Loader.mnist_loader import MNIST
+#sys.path.append('/home.stud/tunindar/bachelorWork/MNIST_Dataset_Loader')
+#from mnist_loader import MNIST
 
 symbols = ['+', '-']
 fonts = ["fonts/times-new-roman.ttf", "fonts/arial.ttf"]
+bg_imgs = []
+
+
+def get_bg_path():
+    length = len(bg_imgs)
+    return bg_imgs[rd.randint(0, length - 1)]
+
+
+def get_bg_imgs(path):
+    for file_path in os.listdir(path):
+        if file_path.endswith(".jpg") or file_path.endswith(".png"):
+            bg_imgs.append(path + '/' + file_path)
 
 
 def add_next_line_symbols(s, x, width, font):
@@ -59,7 +70,7 @@ def generate_number_in_range(min_range, max_range):
 
 def generate_number():
     s = ''
-    for j in range(0, rd.randint(1, 2)):
+    for j in range(0, rd.randint(2, 2)):
         if j == 0:
             num = rd.randint(1, 9)
         else:
@@ -83,8 +94,7 @@ def get_equation(x, y, font, border, draw):
     return equation, y + size[1], border
 
 
-def generate_equation_column(x, y, font, border, height, draw, color, spacing):
-    iterations = rd.randint(80, 80)
+def generate_equation_column(x, y, font, border, height, draw, color, spacing, iterations):
     currIter = 0
     while currIter != iterations:
         # print(str(height) + ' ' + str(check))
@@ -99,14 +109,16 @@ def generate_equation_column(x, y, font, border, height, draw, color, spacing):
 
 
 def add_equations(x, y, font, draw, color, width, height):
-    num_of_columns = rd.randint(1, 2)
+    num_of_columns = 2#rd.randint(1, 2)
     border = None
     spacing = rd.randint(10, 30)
-    new_y, border = generate_equation_column(x, y, font, border, height, draw, color, spacing)
+    iterations = rd.randint(3, 6)
+    new_y, border = generate_equation_column(x, y, font, border, height, draw, color, spacing, iterations)
     if num_of_columns == 1:
         return new_y, border.astype(np.float)
-    new_x = int(width / 2 + x)
-    new_y_1, border = generate_equation_column(new_x, y, font, border, height, draw, color, spacing)
+
+    new_x = int(width / 2 + x - 10)
+    new_y_1, border = generate_equation_column(new_x, y, font, border, height, draw, color, spacing, iterations)
     return max(new_y, new_y_1), border.astype(np.float)
 
 
@@ -121,7 +133,7 @@ def add_text(x, y, font, draw, color, width):
 def generate_images(path, train_img):
     path_img = path  # + 'images/'
     path_lbl = path  # + 'labels/'
-    for i in range(0, 6000):
+    for i in range(0, 10):
         print(i)
         # initialise
         bg_path = get_bg_path()
@@ -130,9 +142,9 @@ def generate_images(path, train_img):
         size = img.size
         width = size[0]
         height = size[1]
-        x = rd.randint(0, 100)
-        y = rd.randint(0, int(height / 2))
-        font = ImageFont.truetype(fonts[rd.randint(0, 1)], rd.randint(20, 50))
+        x = rd.randint(40, 40)
+        y = rd.randint(40, 100)
+        font = ImageFont.truetype(fonts[rd.randint(0, 1)], rd.randint(40, 40))
         color = rd.randint(0, 50)
 
         # add start text
@@ -152,7 +164,7 @@ def generate_images(path, train_img):
         img.save(full_path)
         save_labels(border, path_lbl, i, 0, size[0], size[1])
 
-        # add handwritten
+        # add handwritten digits
         length = len(border)
         add_digit_to = rd.randint(int(length / 2), length)
         count = 0
@@ -167,9 +179,9 @@ def generate_images(path, train_img):
             st_y = border[curr_indx][1]
             all_w = 0
             all_h = 0
-            for j in range(0, rd.randint(1,2)):
-                h_digit_img = change_sizeimg(get_handwritten_digit(train_img))
+            for j in range(0, rd.randint(1, 2)):
                 offset = (int(st_x + h_x), int(st_y))
+                h_digit_img = get_digit(train_img, offset, img, font.getsize('9')[1])
                 img.paste(h_digit_img, offset)
                 h_x = h_digit_img.size[0]
                 all_w += h_x
@@ -182,12 +194,25 @@ def generate_images(path, train_img):
         save_labels(border, path_lbl, i, 4, size[0], size[1])
 
         # change brightness
-        img = cv2.imread(full_path, 1)
+        """
+        img = add_parallel_light(full_path, mode='linear_dynamic', max_brightness=10)
+        full_path = get_full_path(curr_img_path, curr_img_extension, 1)
+        save_image(img, full_path)
+        save_labels(border, path_lbl, i, 1, size[0], size[1])
+        
+        img = Image.open(full_path)
+        enhancer = ImageEnhance.Brightness(img)
+        img = enhancer.enhance(0.7)
+        full_path = get_full_path(curr_img_path, curr_img_extension, 1)
+        save_image(img, full_path)
+        save_labels(border, path_lbl, i, 1, size[0], size[1])
+        """
+        """img = cv2.imread(full_path, 1)
         img = adjust_gamma(img, gamma=rd.uniform(0.45, 2.5))
         full_path = get_full_path(curr_img_path, curr_img_extension, 1)
         save_image(img, full_path)
         save_labels(border, path_lbl, i, 1, size[0], size[1])
-
+"""
         # add noise
         img = cv2.imread(full_path)[:, :, ::-1]
         full_path = get_full_path(curr_img_path, curr_img_extension, 2)
@@ -202,8 +227,9 @@ def generate_images(path, train_img):
 
 
 if __name__ == "__main__":
-    path = '/datagrid/personal/tunindar/numbers-eqs/'
-
+    #path = '/datagrid/personal/tunindar/numbers-eqs/'
+    get_bg_imgs('bg_images')
+    path = '/Users/dariatunina/mach-lerinig/numbers-eqs/'
     data = MNIST('./MNIST_Dataset_Loader/dataset/')
     img_train, _ = data.load_testing()
     train_img = np.array(img_train)
