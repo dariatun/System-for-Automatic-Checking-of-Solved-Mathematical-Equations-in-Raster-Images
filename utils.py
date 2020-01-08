@@ -10,8 +10,8 @@ import matplotlib
 matplotlib.use('Agg')
 from mask_generation import *
 
-sys.path.append('/Users/dariatunina/mach-lerinig/DataAugmentationForObjectDetection')
-# sys.path.append('/home.stud/tunindar/DataAugmentationForObjectDetection')
+#sys.path.append('/Users/dariatunina/mach-lerinig/DataAugmentationForObjectDetection')
+sys.path.append('/home.stud/tunindar/DataAugmentationForObjectDetection')
 
 from data_aug.data_aug import *
 from data_aug.bbox_util import *
@@ -128,7 +128,7 @@ def adjust_gamma(image, gamma=1.0):
 
 
 def change_sizeimg(img, font_height):
-    change_to = font_height + 5#rd.randint(font_height - 5, font_height + 5) #img.size[0] + 10#rd.randint(img.size[0] - 3, img.size[0] + 10)
+    change_to = rd.randint(font_height - 5, font_height + 5) #img.size[0] + 10#rd.randint(img.size[0] - 3, img.size[0] + 10)
     wpercent = (change_to / float(img.size[0]))
     hsize = int((float(img.size[1]) * float(wpercent)))
     return img.resize((change_to, hsize), Image.ANTIALIAS)

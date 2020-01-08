@@ -92,9 +92,9 @@ def get_equation(x, y, font, border, draw):
     equation += s + ' ='
     size = draw.textsize(equation, font)
     if border is None:
-        border = np.array([[x - 3, y, x + size[0] + 6, y + size[1]+5, 0]])
+        border = np.array([[x, y, x + size[0], y + size[1], 0]])
     else:
-        border = np.vstack([border, [x - 3, y, x + size[0] + 6, y + size[1]+5, 0]])
+        border = np.vstack([border, [x, y, x + size[0], y + size[1], 0]])
     # print(size[1], new_y)
     return equation, y + size[1], border
 
@@ -185,16 +185,13 @@ def generate_images(path, train_img):
             all_w = 0
             all_h = 0
             for j in range(0, rd.randint(1, 2)):
-                offset = (int(st_x), int(st_y))
-                if offset[0]+font.getsize('9')[0]+5 >= width or offset[1]+font.getsize('9')[1]+5 >= height:
-                    break
+                offset = (int(st_x + h_x), int(st_y))
                 h_digit_img = get_digit(train_img, offset, img, font.getsize('9')[1])
                 img.paste(h_digit_img, offset)
                 h_x = h_digit_img.size[0]
                 all_w += h_x
                 all_h = max(all_h, h_digit_img.size[0])
-                border = np.vstack([border, [st_x, st_y, st_x + h_x, st_y + h_x, 1]])
-                st_x += h_x
+            border = np.vstack([border, [st_x, st_y, st_x + all_w, st_y + all_w, 1]])
             count += 1
 
         full_path = get_full_path(curr_img_path, curr_img_extension, 4)
@@ -237,7 +234,7 @@ def generate_images(path, train_img):
 if __name__ == "__main__":
     get_bg_imgs('bg_images')
     if LINUX:
-        path = '/datagrid/personal/tunindar/numbers-eqs/'
+        path = '/datagrid/personal/tunindar/numbers-eqs1/'
     else:
         path = '/Users/dariatunina/mach-lerinig/numbers-eqs/'
     data = MNIST('./MNIST_Dataset_Loader/dataset/')
