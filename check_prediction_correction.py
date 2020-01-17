@@ -2,7 +2,6 @@ import json
 
 
 if __name__ == "__main__":
-    path_to_image_folder = '/Users/dariatunina/mach-lerinig/test-images/'
     prob_eq = 0
     prob_handwrttn = 0
     count_eq = 0
