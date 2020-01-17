@@ -163,9 +163,11 @@ def recognises_all_digits(objects, init_img_arr, filename):
 if __name__ == "__main__":
     if INPUTS_FROM_STDIN:
         path_to_image_folder = input('Enter path to the folder with images: ')
+        path_to_json_file = input('Enter path to the json file: ')
     else:
         path_to_image_folder = '/Users/dariatunina/mach-lerinig/test-data/'
-    with open('result.json') as json_file:
+        path_to_json_file = 'result.json'
+    with open(path_to_json_file) as json_file:
         data = json.load(json_file)
         for file in data:
             filename = file['filename'].split('/')[-1]
