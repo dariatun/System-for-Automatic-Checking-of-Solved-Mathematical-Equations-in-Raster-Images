@@ -11,9 +11,12 @@ matplotlib.use('Agg')
 LINUX = False
 INPUTS_FROM_STDIN = False
 
-from MNIST_Dataset_Loader.mnist_loader import MNIST
+# path to the directory with the MNIST_Dataset_Loader
+MNIST_PATH = '/Users/dariatunina/mach-lerinig/Handwritten-Digit-Recognition-using-Deep-Learning/CNN_Keras/MNIST_Dataset_Loader/'
+sys.path.append(MNIST_PATH)
+
 #sys.path.append('/home.stud/tunindar/bachelorWork/MNIST_Dataset_Loader')
-#from mnist_loader import MNIST
+from mnist_loader import MNIST
 
 symbols = ['+', '-']
 fonts = ["fonts/times-new-roman.ttf", "fonts/arial.ttf"]
@@ -293,14 +296,10 @@ if __name__ == "__main__":
             path = '/datagrid/personal/tunindar/numbers-eqs/'
         else:
             path = '/Users/dariatunina/mach-lerinig/numbers-eqs/'
-    data = MNIST('./MNIST_Dataset_Loader/dataset/')
+    data = MNIST(MNIST_PATH + 'dataset/')
     img_train, _ = data.load_testing()
     train_img = np.array(img_train)
     delete_old_files(path)
-
-    # h_digit_img = get_handwritten_digit(train_img)
-    # save_image(h_digit_img, path + 'digit.png')
-
     generate_images(path, train_img)
 
     print('Finished')

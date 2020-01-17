@@ -6,8 +6,13 @@ from PIL import Image, ImageDraw, ImageFont
 import matplotlib.pyplot as plt
 from keras.optimizers import SGD
 
-sys.path.append('/Users/dariatunina/mach-lerinig/Handwritten-Digit-Recognition-using-Deep-Learning/CNN_Keras')
+# path to the directory with the CNN_Keras
+CNN_Keras_PATH = '/Users/dariatunina/mach-lerinig/Handwritten-Digit-Recognition-using-Deep-Learning/CNN_Keras'
+sys.path.append(CNN_Keras_PATH)
 from cnn.neural_network import CNN
+
+SAVE_EACH_NUMBER = False
+INPUTS_FROM_STDIN = False
 
 
 def recognise_image(image):
@@ -18,8 +23,7 @@ def recognise_image(image):
     """
     sgd = SGD(lr=0.01, decay=1e-6, momentum=0.9, nesterov=True)
     clf = CNN.build(width=28, height=28, depth=1, total_classes=10,
-                    Saved_Weights_Path='/Users/dariatunina/mach-lerinig/Handwritten-Digit-Recognition-using-Deep'
-                                       '-Learning/CNN_Keras/cnn_weights.hdf5')
+                    Saved_Weights_Path='cnn_weights.hdf5')
     clf.compile(loss="categorical_crossentropy", optimizer=sgd, metrics=["accuracy"])
     probs = clf.predict(image)
     prediction = probs.argmax(axis=1)
@@ -157,8 +161,10 @@ def recognises_all_digits(objects, init_img_arr, filename):
 
 
 if __name__ == "__main__":
-    path_to_image_folder = '/Users/dariatunina/mach-lerinig/test-data/'
-    SAVE_EACH_NUMBER = False
+    if INPUTS_FROM_STDIN:
+        path_to_image_folder = input('Enter path to the folder with images: ')
+    else:
+        path_to_image_folder = '/Users/dariatunina/mach-lerinig/test-data/'
     with open('result.json') as json_file:
         data = json.load(json_file)
         for file in data:
