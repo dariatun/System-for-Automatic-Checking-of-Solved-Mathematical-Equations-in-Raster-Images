@@ -1,4 +1,18 @@
 # Recognition of mathematical expressions using neural networks
+yolo/ folder:\
+|_ obj.data\
+|_ obj.names\
+|_ yolov3-obj.cfg\
+|_ yolov3-obj_best.weights\
+
+implementation/ folder:\
+|__ generating_dataset.py\
+|__ divide_to_train_and_test.py\
+|__ handwritten_recogniser.py\
+|__ utils.py\
+|__ bg_images/\
+|__ cnn_weights.hdf5\
+|__ fonts/\
 
 1. Generating dataset\
     For the dataset generation some libraries and github directories should be installed:
@@ -28,3 +42,6 @@
     
     Starts with the command: python handwritten_recogniser.py
 
+4. YOLO test\
+    Install YOLO.
+    Command to test: ./darknet detector test obj.data yolov3-obj.cfg yolov3-obj_best.weights
