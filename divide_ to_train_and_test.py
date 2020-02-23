@@ -1,6 +1,6 @@
 import os.path
 
-INPUTS_FROM_STDIN = True
+INPUTS_FROM_STDIN = False
 
 
 def distribute_dataset():

@@ -8,12 +8,12 @@ from utils import *
 import matplotlib
 matplotlib.use('Agg')
 
-LINUX = False
+LINUX = True
 INPUTS_FROM_STDIN = False
 
-from MNIST_Dataset_Loader.mnist_loader import MNIST
-#sys.path.append('/home.stud/tunindar/bachelorWork/MNIST_Dataset_Loader')
-#from mnist_loader import MNIST
+#from MNIST_Dataset_Loader.mnist_loader import MNIST
+sys.path.append('/home.stud/tunindar/bachelorWork/MNIST_Dataset_Loader')
+from mnist_loader import MNIST
 
 symbols = ['+', '-']
 fonts = ["fonts/times-new-roman.ttf", "fonts/arial.ttf"]
