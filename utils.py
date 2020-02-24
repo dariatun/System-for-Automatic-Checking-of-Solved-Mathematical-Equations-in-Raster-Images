@@ -9,8 +9,14 @@ import matplotlib
 
 matplotlib.use('Agg')
 
+<<<<<<< HEAD
 #sys.path.append('/Users/dariatunina/mach-lerinig/DataAugmentationForObjectDetection')
 sys.path.append('/home.stud/tunindar/DataAugmentationForObjectDetection')
+=======
+# path to the directory with the DataAugmentationForObjectDetection
+sys.path.append('/Users/dariatunina/mach-lerinig/DataAugmentationForObjectDetection')
+# sys.path.append('/home.stud/tunindar/DataAugmentationForObjectDetection')
+>>>>>>> 9950f31cf58f224deb2dfa8b21570e7dffaf6ade
 
 from data_aug.data_aug import *
 from data_aug.bbox_util import *
