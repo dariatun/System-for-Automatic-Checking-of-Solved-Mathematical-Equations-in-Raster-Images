@@ -104,9 +104,9 @@ def plot_full_image(predictions, xy_coords, draw):
     :param draw: ImageDraw module, that allows putting label on an image
     :return:
     """
-    font = ImageFont.truetype("fonts/arial.ttf", 20)
     for i in range(0, len(predictions)):
-        draw.text(xy=xy_coords[i], text=str(predictions[i]), fill=(255, 0, 0), font=font)
+        font = ImageFont.truetype("fonts/arial.ttf", int(xy_coords[i][1] * 0.5))
+        draw.text(xy=xy_coords[i][0], text=str(predictions[i]), fill=(255, 0, 0), font=font)
 
 
 def recognise_one_image_at_a_time(objects, img):
@@ -147,7 +147,7 @@ def recognises_all_digits(objects, init_img_arr, filename):
         draw.rectangle([xy, (w + xy[0], h + xy[1])], outline="blue")
 
         image = cut_image(xy[0], xy[1], w, h, init_img_arr)
-        xy_coords.append(xy)
+        xy_coords.append([xy, h])
         image = prepare_image(image)
         if images is None:
             images = image
@@ -156,7 +156,7 @@ def recognises_all_digits(objects, init_img_arr, filename):
     if images is not None:
         _, predictions = recognise_image(images)
         plot_full_image(predictions, xy_coords, draw)
-    init_img.save('/Users/dariatunina/mach-lerinig/test-data/' + filename + '_rec.jpg')
+    init_img.save('out/' + filename + '_rec.jpg')
     print('added ' + filename + '.jpg')
 
 
@@ -165,8 +165,8 @@ if __name__ == "__main__":
         path_to_image_folder = input('Enter path to the folder with images: ')
         path_to_json_file = input('Enter path to the json file: ')
     else:
-        path_to_image_folder = '/Users/dariatunina/mach-lerinig/test-data/'
-        path_to_json_file = 'result.json'
+        path_to_image_folder = '/Users/dariatunina/mach-lerinig/darknet/data/'
+        path_to_json_file = '/Users/dariatunina/mach-lerinig/darknet/result.json'
     with open(path_to_json_file) as json_file:
         data = json.load(json_file)
         for file in data:

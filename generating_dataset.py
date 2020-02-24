@@ -11,17 +11,13 @@ matplotlib.use('Agg')
 LINUX = True
 INPUTS_FROM_STDIN = False
 
-<<<<<<< HEAD
-#from MNIST_Dataset_Loader.mnist_loader import MNIST
-sys.path.append('/home.stud/tunindar/bachelorWork/MNIST_Dataset_Loader')
-=======
+from MNIST_Dataset_Loader.mnist_loader import MNIST
+
 # path to the directory with the MNIST_Dataset_Loader
-MNIST_PATH = '/Users/dariatunina/mach-lerinig/Handwritten-Digit-Recognition-using-Deep-Learning/CNN_Keras/MNIST_Dataset_Loader/'
-sys.path.append(MNIST_PATH)
+#sys.path.append('/Users/dariatunina/mach-lerinig/Handwritten-Digit-Recognition-using-Deep-Learning/MNIST_Dataset_Loader/')
 
 #sys.path.append('/home.stud/tunindar/bachelorWork/MNIST_Dataset_Loader')
->>>>>>> 9950f31cf58f224deb2dfa8b21570e7dffaf6ade
-from mnist_loader import MNIST
+#from mnist_loader import MNIST
 
 symbols = ['+', '-']
 fonts = ["fonts/times-new-roman.ttf", "fonts/arial.ttf"]
