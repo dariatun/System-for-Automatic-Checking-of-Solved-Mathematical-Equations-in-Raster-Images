@@ -30,33 +30,6 @@ def recognise_image(image):
     return image, prediction
 
 
-def cut_image(x, y, width, height, image):
-    """ Cut the image by the border coordinates
-
-    :param x: x coordinate of the border's left side
-    :param y: y coordinate of the border's top side
-    :param width: the width of the border
-    :param height: the height of the border
-    :param image: the image to cut digit from
-    :return: image of a digit
-    """
-    return image[y:y+height, x:width+x, :]
-
-
-def get_xy_wh(coordinates, size):
-    """ Recalculate x, y coordinates
-
-    :param coordinates: coordinates of center of the image
-    :param size: size of a full image
-    :return: recalculated coordinates
-    """
-    width = int(coordinates['width'] * size[1])
-    height = int(coordinates['height'] * size[0])
-    x = int(coordinates['center_x'] * size[1] - width / 2)
-    y = int(coordinates['center_y'] * size[0] - height / 2)
-    return (x, y), width, height
-
-
 def prepare_image(image):
     """ Resize image and convert it to a greyscale image
 
@@ -111,7 +84,6 @@ def plot_full_image(predictions, xy_coords, draw):
 
 def recognise_one_image_at_a_time(objects, img):
     """ Prediction is done by one image at a time
-
     :param objects: array of objects in the image
     :param img: initial image
     :return:
@@ -165,7 +137,7 @@ if __name__ == "__main__":
         path_to_image_folder = input('Enter path to the folder with images: ')
         path_to_json_file = input('Enter path to the json file: ')
     else:
-        path_to_image_folder = '/Users/dariatunina/mach-lerinig/darknet/data/'
+        path_to_image_folder = '/Users/dariatunina/mach-lerinig/test-data/'
         path_to_json_file = '/Users/dariatunina/mach-lerinig/darknet/result.json'
     with open(path_to_json_file) as json_file:
         data = json.load(json_file)

@@ -9,14 +9,9 @@ import matplotlib
 
 matplotlib.use('Agg')
 
-<<<<<<< HEAD
-#sys.path.append('/Users/dariatunina/mach-lerinig/DataAugmentationForObjectDetection')
-sys.path.append('/home.stud/tunindar/DataAugmentationForObjectDetection')
-=======
 # path to the directory with the DataAugmentationForObjectDetection
 sys.path.append('/Users/dariatunina/mach-lerinig/DataAugmentationForObjectDetection')
 # sys.path.append('/home.stud/tunindar/DataAugmentationForObjectDetection')
->>>>>>> 9950f31cf58f224deb2dfa8b21570e7dffaf6ade
 
 from data_aug.data_aug import *
 from data_aug.bbox_util import *
@@ -211,3 +206,30 @@ def get_digit(imgs, offset, bg_img, font_height):
             elif 230 * 3 <= np.sum(img_array[j][i]) <= 255 * 3:
                 img_array[j][i] = bg_img_array[j + offset[1]][i + offset[0]]
     return Image.fromarray(img_array)
+
+
+def cut_image(x, y, width, height, image):
+    """ Cut the image by the border coordinates
+
+    :param x: x coordinate of the border's left side
+    :param y: y coordinate of the border's top side
+    :param width: the width of the border
+    :param height: the height of the border
+    :param image: the image to cut digit from
+    :return: image of a digit
+    """
+    return image[y:y+height, x:width+x, :]
+
+
+def get_xy_wh(coordinates, size):
+    """ Recalculate x, y coordinates
+
+    :param coordinates: coordinates of center of the image
+    :param size: size of a full image
+    :return: recalculated coordinates
+    """
+    width = int(coordinates['width'] * size[1])
+    height = int(coordinates['height'] * size[0])
+    x = int(coordinates['center_x'] * size[1] - width / 2)
+    y = int(coordinates['center_y'] * size[0] - height / 2)
+    return (x, y), width, height
