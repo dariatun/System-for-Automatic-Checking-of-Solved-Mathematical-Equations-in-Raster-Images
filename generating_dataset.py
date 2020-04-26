@@ -3,16 +3,19 @@ import cv2
 from PIL import Image, ImageEnhance, ImageFont, ImageDraw
 import os
 import loremipsum as li
-
+from data_augemation import rotate_and_shear_img
 from utils import *
 import matplotlib
+import sys
+
 matplotlib.use('Agg')
 
-LINUX = True
+LINUX = False
 INPUTS_FROM_STDIN = False
 
 from MNIST_Dataset_Loader.mnist_loader import MNIST
 
+MNIST_PATH = '/Users/dariatunina/mach-lerinig/Handwritten-Digit-Recognition-using-Deep-Learning/CNN_Keras/MNIST_Dataset_Loader/'
 # path to the directory with the MNIST_Dataset_Loader
 #sys.path.append('/Users/dariatunina/mach-lerinig/Handwritten-Digit-Recognition-using-Deep-Learning/MNIST_Dataset_Loader/')
 
@@ -25,6 +28,19 @@ bg_imgs = []
 MAX_NUMBER_OF_EQ_IN_COLUMN = 6
 MIN_NUMBER_OF_EQ_IN_COLUMN = 3
 
+
+def to_black_white(img):
+    # Resize and convert to grayscale
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    # Bilateral filter preserv edges
+    img = cv2.bilateralFilter(img, 9, 75, 75)
+    # Create black and white image based on adaptive threshold
+    #img = cv2.adaptiveThreshold(img, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 71, 20)
+    # Median filter clears small details
+    img = cv2.medianBlur(img, 3)
+    # Add black border in case that page is touching an image border
+    # img = cv2.copyMakeBorder(img, 5, 5, 5, 5, cv2.BORDER_CONSTANT, value=[0, 0, 0])
+    return img
 
 def get_bg_path():
     """ Randomly chooses background image
@@ -239,10 +255,11 @@ def generate_images(path, digits_array):
         curr_img_path = path + str(i)
         curr_img_extension = bg_path[-4:]
         full_path = get_full_path(curr_img_path, curr_img_extension, 0)
+        file_path = "{}.jpg".format(os.getpid())
 
         # save initial files
-        img.save(full_path)
-        save_labels(border, path, i, 0, size[0], size[1])
+        img.save(file_path)
+        #save_labels(border, path, i, 0, size[0], size[1])
 
         # add handwritten digits
         length = len(border)
@@ -271,20 +288,26 @@ def generate_images(path, digits_array):
                 st_x += h_x
             count += 1
 
+
         full_path = get_full_path(curr_img_path, curr_img_extension, 4)
-        img.save(full_path)
-        save_labels(border, path, i, 4, size[0], size[1])
+        img.save(file_path)
+        # cv2.imwrite(file_path, img)
+        #save_labels(border, path, i, 4, size[0], size[1])
 
         # add noise
-        img = cv2.imread(full_path)[:, :, ::-1]
+        img = cv2.imread(file_path)[:, :, ::-1]
         full_path = get_full_path(curr_img_path, curr_img_extension, 2)
-        add_noise(img, full_path)
-        save_labels(border, path, i, 2, size[0], size[1])
+        add_noise(img, file_path)
+        #save_labels(border, path, i, 2, size[0], size[1])
 
         # change rotation
-        img = cv2.imread(full_path)[:, :, ::-1]
+        img = cv2.imread(file_path)[:, :, ::-1]
+        os.remove(file_path)
+        # img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         img, border = rotate_and_shear_img(img, border)
-        save_image(img, get_full_path(curr_img_path, curr_img_extension, 3))
+        img = to_black_white(img)
+        cv2.imwrite(get_full_path(curr_img_path, curr_img_extension, 3), img)
+        # save_image(img, get_full_path(curr_img_path, curr_img_extension, 3))
         save_labels(border, path, i, 3, size[0], size[1])
 
 

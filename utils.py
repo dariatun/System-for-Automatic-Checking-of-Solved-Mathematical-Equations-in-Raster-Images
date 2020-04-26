@@ -1,4 +1,6 @@
 import sys
+
+import imutils
 import skimage
 import random as rd
 import numpy as np
@@ -6,15 +8,10 @@ import os
 from PIL import Image
 import cv2
 import matplotlib
+import matplotlib.pyplot as plt
+
 
 matplotlib.use('Agg')
-
-# path to the directory with the DataAugmentationForObjectDetection
-# sys.path.append('/Users/dariatunina/mach-lerinig/DataAugmentationForObjectDetection')
-sys.path.append('/home.stud/tunindar/DataAugmentationForObjectDetection')
-
-from data_aug.data_aug import *
-from data_aug.bbox_util import *
 
 blues = [
     [0, 0, 139],  # darkblue
@@ -33,37 +30,6 @@ def choose_blue_colour():
     :return: the chosen colour
     """
     return blues[rd.randint(0, len(blues) - 1)]
-
-
-def rotate_img(img, bboxes):
-    """ Randomly rotates an image
-
-    :param img: image to rotate
-    :param bboxes: bounding boxes of an objects
-    :return: rotated image
-    """
-    return RandomRotate(10)(img.copy(), bboxes.copy())
-
-
-def shear_img(img, bboxes):
-    """ Randomly shears an image
-
-    :param img: image to shear
-    :param bboxes: bounding boxes of an objects
-    :return: sheared image
-    """
-    return RandomShear(0.2)(img.copy(), bboxes.copy())
-
-
-def rotate_and_shear_img(img, bboxes):
-    """ Randomly rotates and shears an image
-
-    :param img: image to rotate and shear
-    :param bboxes: bounding boxes of an objects
-    :return: rotated and sheared image
-    """
-    img, bboxes = rotate_img(img, bboxes)
-    return shear_img(img, bboxes)
 
 
 def save_image(image, path):
@@ -99,7 +65,9 @@ def save_labels(borders, path_lbl, i, j, width, height):
     :param height: height of the image
     :return:
     """
-    file = open(path_lbl + str(i) + '_' + str(j) + '.txt', 'w+')
+    # file = open(path_lbl + str(i) + '_' + str(j) + '.txt', 'w+')
+    file = open(path_lbl + str(i) + '.txt', 'w+')
+
     for border in borders:
         obj_width = border[2] - border[0]
         obj_height = border[3] - border[1]
@@ -147,8 +115,8 @@ def get_full_path(path, extension, num):
     :param num: type of image
     :return: new path
     """
-    return path + '_' + str(num) + extension
-
+    #return path + '_' + str(num) + extension
+    return path + extension
 
 def delete_old_files(path):
     """ Clear the given folder
@@ -165,7 +133,7 @@ def delete_old_files(path):
             print(e)
 
 
-def change_size_img(img, font_height):
+def change_font_size_img(img, font_height):
     """ Change the size of a digit image
 
     :param img: initial image
@@ -173,9 +141,13 @@ def change_size_img(img, font_height):
     :return: resized image
     """
     change_to = rd.randint(font_height - 5, font_height + 5)
-    wpercent = (change_to / float(img.size[0]))
-    hsize = int((float(img.size[1]) * float(wpercent)))
-    return img.resize((change_to, hsize), Image.ANTIALIAS)
+    return change_size_img(img, change_to)
+
+
+def change_size_img(img, size):
+    w_percent = (size / float(img.size[0]))
+    h_size = int((float(img.size[1]) * float(w_percent)))
+    return img.resize((size, h_size), Image.ANTIALIAS)
 
 
 def get_image_array(imgs):
@@ -196,7 +168,7 @@ def get_digit(imgs, offset, bg_img, font_height):
     :param font_height: height of the font
     :return: image of a handwritten digit
     """
-    img_array = np.stack((np.array(change_size_img(Image.fromarray(get_image_array(imgs)), font_height)),) * 3, axis=-1)
+    img_array = np.stack((np.array(change_font_size_img(Image.fromarray(get_image_array(imgs)), font_height)),) * 3, axis=-1)
     blue_colour = choose_blue_colour()
     bg_img_array = np.array(bg_img)
     for i in range(0, img_array.shape[0]):
@@ -233,3 +205,13 @@ def get_xy_wh(coordinates, size):
     x = int(coordinates['center_x'] * size[1] - width / 2)
     y = int(coordinates['center_y'] * size[0] - height / 2)
     return (x, y), width, height
+
+
+def rotate_img(img_path, angle):
+    img = Image.open(img_path)
+    img = img.rotate(angle, expand=1)
+    img.save(img_path)
+
+
+def rotate_img_opencv(image, angle):
+    return imutils.rotate(image, angle)
