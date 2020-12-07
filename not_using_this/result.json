@@ -1,0 +1,21 @@
+[
+{
+ "frame_id":1, 
+ "filename":"/home.stud/tunindar/new/darknet/data/capture.jpg", 
+ "objects": [ 
+  {"class_id":1, "name":"handwritten", "relative_coordinates":{"center_x":0.746092, "center_y":0.525254, "width":0.051861, "height":0.079672}, "confidence":0.943046}, 
+  {"class_id":1, "name":"handwritten", "relative_coordinates":{"center_x":0.301141, "center_y":0.351877, "width":0.039332, "height":0.071172}, "confidence":0.933452}, 
+  {"class_id":1, "name":"handwritten", "relative_coordinates":{"center_x":0.734209, "center_y":0.351115, "width":0.039496, "height":0.075547}, "confidence":0.920174}, 
+  {"class_id":1, "name":"handwritten", "relative_coordinates":{"center_x":0.702286, "center_y":0.521987, "width":0.042450, "height":0.083212}, "confidence":0.858506}, 
+  {"class_id":1, "name":"handwritten", "relative_coordinates":{"center_x":0.298853, "center_y":0.516246, "width":0.043944, "height":0.093085}, "confidence":0.736804}, 
+  {"class_id":1, "name":"handwritten", "relative_coordinates":{"center_x":0.771930, "center_y":0.353649, "width":0.043834, "height":0.081397}, "confidence":0.421168}, 
+  {"class_id":1, "name":"handwritten", "relative_coordinates":{"center_x":0.738637, "center_y":0.686928, "width":0.064143, "height":0.104033}, "confidence":0.298782}, 
+  {"class_id":0, "name":"equations", "relative_coordinates":{"center_x":0.602001, "center_y":0.687527, "width":0.197781, "height":0.084108}, "confidence":0.999901}, 
+  {"class_id":0, "name":"equations", "relative_coordinates":{"center_x":0.595542, "center_y":0.524380, "width":0.182698, "height":0.077183}, "confidence":0.999876}, 
+  {"class_id":0, "name":"equations", "relative_coordinates":{"center_x":0.605244, "center_y":0.361797, "width":0.201995, "height":0.079448}, "confidence":0.999722}, 
+  {"class_id":0, "name":"equations", "relative_coordinates":{"center_x":0.222740, "center_y":0.683290, "width":0.213706, "height":0.084822}, "confidence":0.999551}, 
+  {"class_id":0, "name":"equations", "relative_coordinates":{"center_x":0.197384, "center_y":0.357270, "width":0.165131, "height":0.078826}, "confidence":0.999450}, 
+  {"class_id":0, "name":"equations", "relative_coordinates":{"center_x":0.201592, "center_y":0.519394, "width":0.173352, "height":0.078001}, "confidence":0.999095}
+ ] 
+}
+]
