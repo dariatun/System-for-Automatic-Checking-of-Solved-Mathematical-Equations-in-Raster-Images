@@ -167,12 +167,12 @@ def create_matrix_from_lines(lines):
     return matrix
 
 
-def print_prediction_percent(approx_pred, all, value, file, string):
+def print_prediction_percent(approx_pred, all, file, string):
     pred_percent = approx_pred / all
     print('Prediction string comparacent percent ' + string + ': ' + str(pred_percent))
-    value += pred_percent
     file.write(str(pred_percent))
     file.write('\n')
+    return pred_percent
 
 
 def print_overall_prediction_correctness(value, dividend, name):

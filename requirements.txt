@@ -10,3 +10,4 @@ Pillow~=8.0.1
 PyQt5~=5.15.2
 pytesseract~=0.3.6
 loremipsum~=1.0.5
+h5py==2.10.0

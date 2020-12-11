@@ -17,7 +17,6 @@ from PyQt5.QtCore import pyqtSlot
 from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QPushButton, QMenuBar, QAction
 from PyQt5.QtGui import QIcon, QPixmap, QGuiApplication
 
-
 from application.constants import *
 
 
@@ -91,12 +90,17 @@ class App(QWidget):
         self.pred_file_equation_merged = None
         self.pred_file_handwritten_merged = None
 
+        self.boxes_incorrect_file = None
+        self.pred_incorrect_file = None
+        self.pred_incorrect_merged_file = None
+
         self.overall_pred_correctness_merged = 0
         self.overall_pred_correctness = 0
         self.overall_box_pred_correctness = 0
         self.overall_pred_correctness_obj = [0, 0]
         self.overall_pred_correctness_obj_merged = [0, 0]
-        self.cap = cv2.VideoCapture(0)
+        self.cap = None
+        # self.cap = cv2.VideoCapture(0)
 
         self.show()
 
@@ -190,7 +194,7 @@ class App(QWidget):
         return prediction_matrix
 
     def camera_images_loop(self):
-        #cap = cv2.VideoCapture(0)
+        # cap = cv2.VideoCapture(0)
 
         # self.clock(name=DEBUG_FILENAME, img_path=TEST_DATA_PATH + DEBUG_FILENAME + JPG)
         time.sleep(5)
@@ -220,6 +224,10 @@ class App(QWidget):
         self.pred_file_equation_merged = open(OUTPUT_PATH + 'pred_percent_equation_merged' + TXT, "w+")
         self.pred_file_handwritten_merged = open(OUTPUT_PATH + 'pred_percent_handwritten_merged' + TXT, "w+")
 
+        self.boxes_incorrect_file = open(OUTPUT_PATH + 'boxes_incorrect' + TXT, "w+")
+        self.pred_incorrect_file = open(OUTPUT_PATH + 'pred_incorrect' + TXT, "w+")
+        self.pred_incorrect_merged_file = open(OUTPUT_PATH + 'pred_incorrect_merged' + TXT, "w+")
+
         if DEBUG_ONE_FILE:
             self.clock(name=DEBUG_FILENAME, img_path=TEST_DATA_PATH + DEBUG_FILENAME + JPG)
         else:
@@ -231,19 +239,21 @@ class App(QWidget):
                         self.clock(name=filename, img_path=TEST_DATA_PATH + filename + JPG)
 
                     prediction_matrix = self.get_approximate_prediction()
-                    approx_pred = compare_predictions(str(i) + '_' + str(j), prediction_matrix)
+                    approx_pred = compare_predictions(
+                        str(i) + '_' + str(j), prediction_matrix, self.pred_incorrect_merged_file)
 
-                    print_prediction_percent(approx_pred[EQUATIONS] + approx_pred[HANDWRITTEN],
-                                             self.objects_number[HANDWRITTEN] + self.objects_number[EQUATIONS],
-                                             self.overall_pred_correctness_merged, self.pred_file_merged, 'merged')
+                    self.overall_pred_correctness_merged += print_prediction_percent(
+                        approx_pred[EQUATIONS] + approx_pred[HANDWRITTEN],
+                        self.objects_number[HANDWRITTEN] + self.objects_number[EQUATIONS],
+                        self.pred_file_merged, 'merged')
 
-                    print_prediction_percent(approx_pred[EQUATIONS], self.objects_number[EQUATIONS],
-                                             self.overall_pred_correctness_obj_merged[EQUATIONS],
-                                             self.pred_file_equation_merged, 'merged equation')
+                    self.overall_pred_correctness_obj_merged[EQUATIONS] += print_prediction_percent(
+                        approx_pred[EQUATIONS], self.objects_number[EQUATIONS],
+                        self.pred_file_equation_merged, 'merged equation')
 
-                    print_prediction_percent(approx_pred[HANDWRITTEN], self.objects_number[HANDWRITTEN],
-                                             self.overall_pred_correctness_obj_merged[HANDWRITTEN],
-                                             self.pred_file_handwritten_merged, 'merged handwritten')
+                    self.overall_pred_correctness_obj_merged[HANDWRITTEN] += print_prediction_percent(
+                        approx_pred[HANDWRITTEN], self.objects_number[HANDWRITTEN],
+                        self.pred_file_handwritten_merged, 'merged handwritten')
 
                     print_merged_answer(str(i) + '_' + str(j), prediction_matrix)
                     self.pred_matrixes = []
@@ -255,6 +265,10 @@ class App(QWidget):
         self.pred_file_handwritten.close()
         self.pred_file_equation_merged.close()
         self.pred_file_handwritten_merged.close()
+
+        self.boxes_incorrect_file.close()
+        self.pred_incorrect_file.close()
+        self.pred_incorrect_merged_file.close()
 
         merged_imgs_num = NUMBER_OF_IMAGES * NUMBER_IMAGES_PODTYPES
         imgs_num = merged_imgs_num * NUMBER_OF_IMAGE_TYPES
@@ -319,15 +333,18 @@ class App(QWidget):
         pred_matrix_row_count = len(pred_matrix[0])
         self.objects_number = [int(pred_matrix_row_count / 3) * len(pred_matrix),
                                int(pred_matrix_row_count / 3) * 2 * len(pred_matrix)]
-        right_count = compare_predictions(name, pred_matrix)
-        print_prediction_percent(right_count[EQUATIONS] + right_count[HANDWRITTEN],
-                                 self.objects_number[EQUATIONS] + self.objects_number[HANDWRITTEN],
-                                 self.overall_pred_correctness, self.pred_file, '')
-        print_prediction_percent(right_count[EQUATIONS], self.objects_number[EQUATIONS],
-                                 self.overall_pred_correctness_obj[EQUATIONS], self.pred_file_equation, 'equation')
-        print_prediction_percent(right_count[HANDWRITTEN], self.objects_number[HANDWRITTEN],
-                                 self.overall_pred_correctness_obj[HANDWRITTEN], self.pred_file_handwritten,
-                                 'handwritten')
+        right_count = compare_predictions(name, pred_matrix, self.pred_incorrect_file)
+        self.overall_pred_correctness += print_prediction_percent(right_count[EQUATIONS] + right_count[HANDWRITTEN],
+                                                                  self.objects_number[EQUATIONS] + self.objects_number[
+                                                                      HANDWRITTEN],
+                                                                  self.pred_file, '')
+        self.overall_pred_correctness_obj[EQUATIONS] += print_prediction_percent(right_count[EQUATIONS],
+                                                                                 self.objects_number[EQUATIONS],
+                                                                                 self.pred_file_equation, 'equation')
+        self.overall_pred_correctness_obj[HANDWRITTEN] += print_prediction_percent(right_count[HANDWRITTEN],
+                                                                                   self.objects_number[HANDWRITTEN],
+                                                                                   self.pred_file_handwritten,
+                                                                                   'handwritten')
 
     def add_prediction_matrix(self, boxes, predictions, class_ids, are_legitimate, name):
         lines = divide_by_lines(boxes, predictions, class_ids, are_legitimate)
@@ -383,10 +400,13 @@ class App(QWidget):
         boxes, confidences, classIDs, predictions, are_legitimate = self.make_prediction(image, name)
 
         if self.mode == EXPERIMENTAL_MODE:
-            prediction_compare = compare_box_predictions(boxes, classIDs, name)
+            prediction_compare, incorrect_class_ids_count, incorrect_box_positions_count = compare_box_predictions(
+                boxes, classIDs, name)
             print('Prediction box comparecent percent: ' + str(prediction_compare))
-            self.pred_boxes_file.write(str(prediction_compare))
-            self.pred_boxes_file.write('\n')
+            self.pred_boxes_file.write(str(prediction_compare) + '\n')
+            print('Incorrect box predicitons: ' + str(incorrect_class_ids_count) + ' ' + str(incorrect_box_positions_count))
+            self.boxes_incorrect_file.write(
+                str(incorrect_class_ids_count) + ' ' + str(incorrect_box_positions_count) + '\n')
             self.overall_box_pred_correctness += prediction_compare
 
         image = self.draw_bounding_boxes(image, boxes, confidences, classIDs, self.colors, predictions, are_legitimate)

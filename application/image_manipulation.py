@@ -1,19 +1,49 @@
 import cv2
 import numpy as np
+import math
+from scipy import ndimage
 
 from application.handwritten_recogniser import recognise_handwritten_image
 from application.recognise_text import recognise_text
 from utils.utils import cut_image
 
 DEBUG = False
+DEBUG_TEXT = False
 INCREASE_BORDER_VALUE = 12
 
 INCREASE_HANDWRITTEN_BORDER_VALUE = 20
 MAX_ACCEPTABLE_BLACK_PIXEL_COUNT = 6
 MAX_BLACK_VALUE = 120
-MIN_WHITE_VALUE = 50
+MIN_WHITE_VALUE = 20
 
 DIGIT_IMAGE_SIZE = 28
+
+
+def getBestShift(img):
+    """
+    from https://github.com/opensourcesblog/tensorflow-mnist
+    :param img:
+    :return:
+    """
+    cy, cx = ndimage.measurements.center_of_mass(img)
+
+    rows, cols = img.shape
+    shiftx = np.round(cols / 2.0 - cx).astype(int)
+    shifty = np.round(rows / 2.0 - cy).astype(int)
+
+    return shiftx, shifty
+
+
+def shift(img, sx, sy):
+    """
+    from https://github.com/opensourcesblog/tensorflow-mnist
+    :param img:
+    :return:
+    """
+    rows, cols = img.shape
+    M = np.float32([[1, 0, sx], [0, 1, sy]])
+    shifted = cv2.warpAffine(img, M, (cols, rows))
+    return shifted
 
 
 def value_is_in_range(val, length, img_length):
@@ -63,6 +93,69 @@ def rbg_image_to_grey(image):
     return grey #image
 
 
+def preprocessing_handwritten_image(image):
+    """
+    from https://github.com/opensourcesblog/tensorflow-mnist
+    :param image:
+    :return:
+    """
+    # rescale it
+    gray = cv2.resize(255 - image, (28, 28))
+    #gray = image
+    if DEBUG and gray.size != 0:
+        cv2.imshow("FULL IMAGE", gray)
+        cv2.waitKey(0)
+    # better black and white version
+    (thresh, gray) = cv2.threshold(gray, 128, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
+    gray = cv2.GaussianBlur(gray, (3, 3), 3)
+    kernel = np.ones((3, 3), np.uint8)
+
+    gray = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, 31, 1)
+
+    erode = cv2.erode(gray, kernel, iterations=5)
+    gray = cv2.bitwise_or(gray, erode)
+    gray = cv2.morphologyEx(gray, cv2.MORPH_OPEN, kernel)
+
+    while np.sum(gray[0]) == 0:
+        gray = gray[1:]
+
+    while np.sum(gray[:, 0]) == 0:
+        gray = np.delete(gray, 0, 1)
+
+    while np.sum(gray[-1]) == 0:
+        gray = gray[:-1]
+
+    while np.sum(gray[:, -1]) == 0:
+        gray = np.delete(gray, -1, 1)
+
+    rows, cols = gray.shape
+
+    if rows > cols:
+        factor = 20.0 / rows
+        rows = 20
+        cols = int(round(cols * factor))
+        # first cols than rows
+        gray = cv2.resize(gray, (cols, rows))
+    else:
+        factor = 20.0 / cols
+        cols = 20
+        rows = int(round(rows * factor))
+        # first cols than rows
+        gray = cv2.resize(gray, (cols, rows))
+
+    colsPadding = (int(math.ceil((28 - cols) / 2.0)), int(math.floor((28 - cols) / 2.0)))
+    rowsPadding = (int(math.ceil((28 - rows) / 2.0)), int(math.floor((28 - rows) / 2.0)))
+    gray = np.lib.pad(gray, (rowsPadding, colsPadding), 'constant')
+
+    shiftx, shifty = getBestShift(gray)
+    shifted = shift(gray, shiftx, shifty)
+    gray = shifted
+    if DEBUG and gray.size != 0:
+        cv2.imshow("FULL IMAGE changed", gray)
+        cv2.waitKey(0)
+    return gray
+
+
 def prepare_handwritten_image(image):
     """ Resize image and convert it to a greyscale image
 
@@ -82,6 +175,9 @@ def prepare_handwritten_image(image):
     #image[image > 0] = 255
 
     resized_image = cv2.resize(image, (28, 28))
+    #result = resized_image
+
+
     if DEBUG and resized_image.size != 0:
         cv2.imshow("original", resized_image)
         cv2.waitKey(0)
@@ -91,6 +187,7 @@ def prepare_handwritten_image(image):
     if DEBUG and thresh.size != 0:
         cv2.imshow("FULL IMAGE", thresh)
         cv2.waitKey(0)
+    
 
     """
     thresh = cv2.adaptiveThreshold(thresh, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, 71, 0)
@@ -99,6 +196,7 @@ def prepare_handwritten_image(image):
         cv2.imshow("addaptive", thresh)
         cv2.waitKey(0)
     """
+
     blured = cv2.GaussianBlur(thresh, (5, 5), 5)
 
     if DEBUG and blured.size != 0:
@@ -117,7 +215,6 @@ def prepare_handwritten_image(image):
     #change_to = 28
     #result = result.resize((change_to, change_to), Image.ANTIALIAS)
 
-    result = np.array(result)
 
     # change size
 
@@ -129,29 +226,29 @@ def prepare_handwritten_image(image):
 def resize_image_if_needed(x, y, w, h, image, loop_number):
     digit_image = cut_image(x, y, w, h, image)
 
-    digit_image = prepare_handwritten_image(digit_image)
+    changed_digit_image = prepare_handwritten_image(digit_image) #prepare_handwritten_image(digit_image)
     #digit_image[digit_image > 100] = 255
-    if DEBUG and digit_image.size != 0:
-        cv2.imshow("Handwritten", digit_image)
+    if DEBUG and changed_digit_image.size != 0:
+        cv2.imshow("Handwritten", changed_digit_image)
         cv2.waitKey(0)
 
     if loop_number > 4:
-        return digit_image, [x, y, w, h]
+        return preprocessing_handwritten_image(digit_image), [x, y, w, h]
 
     left_black, right_black, up_black, down_black = 0, 0, 0, 0
 
     for i in range(0, 28):
-        if digit_image[0][i] > MIN_WHITE_VALUE:
+        if changed_digit_image[0][i] > MIN_WHITE_VALUE:
             up_black += 1
-        if digit_image[28 - 1][i] > MIN_WHITE_VALUE:
+        if changed_digit_image[28 - 1][i] > MIN_WHITE_VALUE:
             down_black += 1
     for i in range(0, 28):
-        if digit_image[i][0] > MIN_WHITE_VALUE:
+        if changed_digit_image[i][0] > MIN_WHITE_VALUE:
             left_black += 1
-        if digit_image[i][28 - 1] > MIN_WHITE_VALUE:
+        if changed_digit_image[i][28 - 1] > MIN_WHITE_VALUE:
             right_black += 1
 
-    if DEBUG:
+    if DEBUG or DEBUG_TEXT:
         print(left_black, right_black, up_black, down_black)
     new_x, new_y, new_w, new_h = x, y, w, h
     if left_black > MAX_ACCEPTABLE_BLACK_PIXEL_COUNT:
@@ -179,7 +276,7 @@ def resize_image_if_needed(x, y, w, h, image, loop_number):
     if x != new_x or y != new_y or w != new_w or h != new_h:
         return resize_image_if_needed(new_x, new_y, new_w, new_h, image, loop_number + 1)
 
-    return digit_image, [x, y, w, h]
+    return preprocessing_handwritten_image(digit_image), [x, y, w, h]
 
 
 def recognise_object(image, x, y, w, h, class_id, is_from_phone):
@@ -204,8 +301,11 @@ def recognise_object(image, x, y, w, h, class_id, is_from_phone):
         #digit_image = prepare_handwritten_image(digit_image)
         _, prediction = recognise_handwritten_image(digit_image)
         prediction = str(prediction[0])
-        if DEBUG:
+        if DEBUG or DEBUG_TEXT:
             print(prediction)
+        if( DEBUG or DEBUG_TEXT) and digit_image.size != 0:
+            cv2.imshow("Handwritten", digit_image)
+            cv2.waitKey(0)
     return prediction, box, is_legitimate
 
 

@@ -1,12 +1,10 @@
-import sys
-
 import imutils
 import skimage
 import random as rd
 import numpy as np
 import os
 from PIL import Image
-import cv2
+import re
 import matplotlib
 import matplotlib.pyplot as plt
 
@@ -225,3 +223,28 @@ def add_to_dictionary(dictionary, el):
 def get_element_with_the_biggest_value(dictionary):
     return [k for k, v in dictionary.items() if v == max(dictionary.values())]
 
+
+def get_delimeter(line):
+    symbols = re.split('[0-9 ]', line)
+    symbols = list(filter(None, symbols))
+    symbols = remove_equation_symbol(symbols)
+
+    symbol = ''
+    if len(symbols) == 1:
+        symbol = symbols[0]
+    elif len(symbols) > 1:
+        symbol = symbols[1]
+    return symbol
+
+
+def remove_equation_symbol(symbols):
+    if '=' in symbols: symbols.remove('=')
+    if '==' in symbols: symbols.remove('==')
+    return symbols
+
+
+def get_numbers_and_delimeter(expression):
+    numbers = re.split('[=+-/" /"]', expression)
+    numbers = list(filter(None, numbers))
+    symbol = get_delimeter(expression)
+    return numbers, symbol

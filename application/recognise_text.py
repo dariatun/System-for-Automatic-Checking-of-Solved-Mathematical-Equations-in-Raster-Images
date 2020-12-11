@@ -4,10 +4,10 @@ import cv2
 import os
 import re
 import numpy as np
-from utils.utils import cut_image, add_to_dictionary, get_element_with_the_biggest_value
+from utils.utils import cut_image, add_to_dictionary, get_element_with_the_biggest_value, get_numbers_and_delimeter
 
 DEBUG = False
-DEBUG_WRITE = True
+DEBUG_WRITE = False
 
 DEFAULT_SYMBOL_WIDTH = 80
 LEFT = 0
@@ -15,12 +15,6 @@ RIGHT = 1
 BOTH = 2
 SYMBOL_WIDTH_MULTIPLIER = 1
 ACCEPTABLE_LOOP_NUMBER = 1
-
-
-def remove_equation_symbol(symbols):
-    if '=' in symbols: symbols.remove('=')
-    if '==' in symbols: symbols.remove('==')
-    return symbols
 
 
 def if_is_symbol(c):
@@ -91,19 +85,6 @@ def add_number(num, first, second, symbol):
 
 def find_max_list(list):
     return max(list, key=len)
-
-
-def get_delimeter(line):
-    symbols = re.split('[0-9 ]', line)
-    symbols = list(filter(None, symbols))
-    symbols = remove_equation_symbol(symbols)
-
-    symbol = ''
-    if len(symbols) == 1:
-        symbol = symbols[0]
-    elif len(symbols) > 1:
-        symbol = symbols[1]
-    return symbol
 
 
 def get_lines_predictions(image):
@@ -237,13 +218,11 @@ def recognise_text(image, x, y, w, h, loop_number):
 
         if len(line) == 0: continue
 
-        numbers = re.split('[=+-/" /"]', line)
-        numbers = list(filter(None, numbers))
+        numbers, symbol = get_numbers_and_delimeter(line)
 
         if len(numbers) < 2: continue
-
-        symbol = get_delimeter(line)
         if len(symbol) == 0: continue
+
         numbers[0] = check_first_digit(numbers[0])
         number_1 = int(numbers[0])
         numbers[1] = check_first_digit(numbers[1])
