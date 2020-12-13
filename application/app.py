@@ -16,7 +16,8 @@ from PIL import Image
 import threading
 from PyQt5.QtCore import pyqtSlot, Qt
 from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QPushButton, QMenuBar, QAction
-from PyQt5.QtGui import QIcon, QPixmap, QGuiApplication, QPainter, QPen, QBrush, QLinearGradient, QGradient, QColor
+from PyQt5.QtGui import QIcon, QPixmap, QGuiApplication, QPainter, QPen, QBrush, QLinearGradient, QGradient, QColor, \
+    QFont
 
 from application.constants import *
 
@@ -30,7 +31,6 @@ class App(QWidget):
         self.top = 10
         self.width = WINDOW_WIDTH
         self.height = WINDOW_HEIGHT
-
         self.widgets()
         self.mode = SIMPLE_MODE
         self.set_background()
@@ -60,8 +60,7 @@ class App(QWidget):
         self.starting_time = time.time()
         self.frame_id = 0
 
-        self.fps_label = QLabel('FPS: ---------------------------', self)
-        self.fps_label.move(0, 0)
+        self.fps_label = None
 
         """
         leave_button = QPushButton("End loop", self)
@@ -69,9 +68,11 @@ class App(QWidget):
         leave_button.clicked.connect(self.end_loop)
         """
 
-        start_button = QPushButton("Start loop", self)
-        start_button.move(WINDOW_WIDTH / 2 - 20, WINDOW_HEIGHT - 50)
-        start_button.clicked.connect(self.start_tryout)
+        self.start_button = QPushButton("START", self)
+        self.start_button.move(WINDOW_WIDTH / 2 - 20, WINDOW_HEIGHT - 50)
+        self.start_button.setGeometry(WINDOW_WIDTH / 2 - 100, WINDOW_HEIGHT / 2 - 50, WINDOW_WIDTH / 6, WINDOW_HEIGHT / 8)
+        self.start_button.setFont(QFont('Comic Sans MS', 50))
+        self.start_button.clicked.connect(self.start_tryout)
 
         self.leave_loop = False
 
@@ -103,7 +104,7 @@ class App(QWidget):
 
         self.show()
 
-    def show_image(self, image=None, path='', x=0, y=0):
+    def show_image(self, x, y, width, height, image=None, path=''):
         label = QLabel(self)
         filename = path
         if len(path) == 0:
@@ -111,29 +112,40 @@ class App(QWidget):
             cv2.imwrite(filename, image)
 
         pixmap = QPixmap(filename)
-        label.setPixmap(pixmap.scaledToWidth(300))
+        label.setPixmap(pixmap.scaled(width, height))
         label.move(x, y)
         if len(path) == 0:
             os.remove(filename)
         label.show()
 
+    def setup_fps_label(self):
+        self.fps_label = QLabel('FPS: ---------------------------', self)
+        self.fps_label.move(0, 0)
+
     def setup_corner_images(self):
-        corner_image = cv2.imread(CORNER_IMAGE_PATH)
-        corner_image = cv2.resize(corner_image, (int(WINDOW_WIDTH / 6), int(WINDOW_HEIGHT / 6)))
+        corner_image = cv2.imread(CORNER_IMAGE_PATH, cv2.IMREAD_UNCHANGED)
         x = 0
         y = 0
+        width = int(WINDOW_WIDTH / 6)
+        height = int(WINDOW_HEIGHT / 6)
         i = 0
         while True:
-            self.show_image(image=corner_image, x=x, y=y)
+            filename = "../temporary/{}.png".format(os.getpid())
+            cv2.imwrite(filename, corner_image)
+            self.show_image(x, y, width, height, path=filename)
+            os.remove(filename)
+
             i += 1
             if i == 4:
                 break
             corner_image = cv2.rotate(corner_image, cv2.cv2.ROTATE_90_CLOCKWISE)
-            if x == 0:                   
-                x = WINDOW_WIDTH - corner_image.shape[0]
+
+            if x == 0:
+                x = WINDOW_WIDTH - width
+            elif y == 0:
+                y = WINDOW_HEIGHT - height
             else:
                 x = 0
-                y = WINDOW_HEIGHT - corner_image.shape[1]
 
     def widgets(self):
         self.setWindowTitle(self.title)
@@ -161,6 +173,7 @@ class App(QWidget):
     def turn_on_experimental_mode(self):
         self.mode = EXPERIMENTAL_MODE
         self.set_background()
+        self.setup_fps_label()
 
     def turn_on_simple_mode(self):
         self.mode = SIMPLE_MODE
@@ -189,7 +202,8 @@ class App(QWidget):
 
     @pyqtSlot()
     def start_tryout(self):
-        threading.Thread(target=self.start_loop()).start()
+        self.start_button.deleteLater()
+        self.start_loop()
 
     def start_loop(self):
         self.leave_loop = True
@@ -222,10 +236,10 @@ class App(QWidget):
     def camera_images_loop(self):
         # cap = cv2.VideoCapture(0)
 
-        # self.clock(name=DEBUG_FILENAME, img_path=TEST_DATA_PATH + DEBUG_FILENAME + JPG)
-        time.sleep(5)
-        _, frame = self.cap.read()
-        self.clock(name='capture', image=frame)
+        self.clock(name=DEBUG_FILENAME, img_path=TEST_DATA_PATH + DEBUG_FILENAME + JPG)
+        #time.sleep(5)
+        #_, frame = self.cap.read()
+        #self.clock(name='capture', image=frame)
 
         prediction_matrix = self.get_approximate_prediction()
         results = confirm_results(prediction_matrix)
@@ -447,39 +461,45 @@ class App(QWidget):
     def post_text(self, results, matrix):
         self.clear_labels()
         #self.draw_board()
-        column_number = len(matrix[0])
+        column_number = int(len(matrix[0]) / 3)
         rows_number = len(matrix)
-        xs, ys = [50] * column_number, [50] * rows_number
+        xs, ys = [100] * column_number * 3, [50] * rows_number
         column_size = int(WINDOW_WIDTH / column_number) - 10
-        for i in range(1, column_number):
-            xs[i] = xs[i - 1] + column_size
+        small_column_size = int(column_size / 3) - 3
+        for i in range(1, column_number * 3):
+            if i % 3 == 0:
+                xs[i] = xs[i - 3] + column_size
+            elif i % 3 == 2:
+                xs[i] = xs[i - 1] + 25
+            else:
+                xs[i] = xs[i - 1] + small_column_size
+
         row_size = int(WINDOW_HEIGHT / rows_number) - 10
         for i in range(1, rows_number):
             ys[i] = ys[i - 1] + row_size
 
         k = 0
         for i in range(0, rows_number):
-            for j in range(0, column_number):
-                if len(matrix[i][j]) == 0:
-                    continue
-                label = OutlinedLabel(matrix[i][j], self)
-                linearGrad = QLinearGradient(0, 1, 0, 0)
-                linearGrad.setCoordinateMode(QGradient.ObjectBoundingMode)
-                linearGrad.setColorAt(0, QColor('#0fd850'))
-                linearGrad.setColorAt(1, QColor('#f9f047'))
-                label.setBrush(linearGrad)
-                label.setPen(Qt.darkGreen)
-                label.setStyleSheet('font-family: Bubblegum Sans; font-size: 20pt')
-                label.move(xs[j], ys[i])
-                label.show()
-                self.text_labels.append(label)
+            for j in range(0, column_number * 3):
+                if len(matrix[i][j]) != 0:
+
+                    label = OutlinedLabel(matrix[i][j], self)
+                    linearGrad = QLinearGradient(0, 1, 0, 0)
+                    linearGrad.setCoordinateMode(QGradient.ObjectBoundingMode)
+                    linearGrad.setColorAt(0, QColor('#0fd850'))
+                    linearGrad.setColorAt(1, QColor('#f9f047'))
+                    label.setBrush(linearGrad)
+                    label.setPen(Qt.darkGreen)
+                    label.setStyleSheet('font-family: Bubblegum Sans; font-size: 20pt')
+                    label.move(xs[j], ys[i])
+                    label.show()
+                    self.text_labels.append(label)
                 if j % 3 == 0:
                     results_label = QLabel(get_text_from_result(results[k]), self)
                     results_label.move(xs[j], ys[i] - 30)
                     results_label.show()
                     self.text_labels.append(results_label)
                     k += 1
-        self.show()
         QGuiApplication.processEvents()
 
     def clock(self, name, image=None, img_path=None):
@@ -515,12 +535,12 @@ class App(QWidget):
 
         if BOOL_SAVE:
             cv2.imwrite(OUTPUT_PATH + name + '.jpg', image)
-        elapsed_time = time.time() - self.starting_time
-        fps = self.frame_id / elapsed_time
-        # var = StringVar()
-        # label = Label(root, textvariable=var, relief=RAISED)
-        self.fps_label.setText("FPS: " + str(fps))
-        self.fps_label.show()
+        if self.mode == EXPERIMENTAL_MODE:
+            elapsed_time = time.time() - self.starting_time
+            fps = self.frame_id / elapsed_time
+
+            self.fps_label.setText("FPS: " + str(fps))
+            self.fps_label.show()
 
         #if self.mode == EXPERIMENTAL_MODE:
         #    self.show_image(image=image)

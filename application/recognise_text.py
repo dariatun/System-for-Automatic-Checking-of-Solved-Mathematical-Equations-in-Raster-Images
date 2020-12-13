@@ -88,7 +88,7 @@ def find_max_list(list):
 
 
 def get_lines_predictions(image):
-    filename = "{}.png".format(os.getpid())
+    filename = "../temporary/{}.png".format(os.getpid())
     cv2.imwrite(filename, image)
     lines_size = 1
     lines = [None] * lines_size
