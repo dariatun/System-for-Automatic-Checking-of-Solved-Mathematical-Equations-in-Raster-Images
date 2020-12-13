@@ -279,7 +279,7 @@ def resize_image_if_needed(x, y, w, h, image, loop_number):
     return preprocessing_handwritten_image(digit_image), [x, y, w, h]
 
 
-def recognise_object(image, x, y, w, h, class_id, is_from_phone):
+def recognise_object(image, x, y, w, h, class_id):
     # grey = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     # cv2.imwrite('grey.jpg', grey)
     image = rbg_image_to_grey(image)

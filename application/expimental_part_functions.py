@@ -1,6 +1,6 @@
 import re
 from application.constants import TXT, TEST_DATA_ANNOTATIONS_PATH, TEST_DATA_BOX_ANNOTATIONS_PATH, EQUATIONS, \
-    HANDWRITTEN
+    HANDWRITTEN, BOX, CLASS_ID
 from utils.utils import get_numbers_and_delimeter
 
 
@@ -53,21 +53,22 @@ def compare_predictions(name, prediction_matrix, file):
     corr_pred_file.close()
     output_string = str(incorrect_symbol_count) + ' ' + str(incorrect_one_number_count) + ' ' + \
                     str(incorrect_two_numbers_count) + ' ' + str(incorrect_number_and_symbol_count) + ' ' +\
-                    str(incorrect_all_count) + ' ' + str(incorrect_digit_count)
+                    str(incorrect_all_count) + ' ' + str(incorrect_digit_count) + ' ' +\
+                    str() + ' ' + str()
     print('Incorrect predictions: ' + output_string)
-    file.write(output_string + '\n')
+    file.write(output_string)
     return right_count
 
 
-def compare_box_predictions(boxes, classIDs, name):
+def compare_box_predictions(boxes_classids, name):
     annotation_boxes, annotation_classIDs = read_annotation_file(name)
     len_annotation_boxes = len(annotation_boxes)
-    incorrect_class_ids_count = 0
     incorrect_box_positions_count = 0
     count = 0
-    for i in range(0, len(boxes)):
-        box = boxes[i]
-        class_id = classIDs[i]
+    for i in range(0, len(boxes_classids)):
+        element = boxes_classids[i]
+        box = element[BOX]
+        class_id = element[CLASS_ID]
         box_coordinates = [box[0], box[1], box[0] + box[2], box[1] + box[3]]
         was_categorised = False
         # print(box_coordinates)
@@ -82,14 +83,10 @@ def compare_box_predictions(boxes, classIDs, name):
                 annotation_classIDs.remove(annotation_class_id)
                 was_categorised = True
                 break
-            elif not class_id == annotation_class_id:
-                incorrect_class_ids_count += 1
-                was_categorised = True
-                break
         if not was_categorised:
             incorrect_box_positions_count += 1
 
-    return count / len_annotation_boxes, incorrect_class_ids_count, incorrect_box_positions_count
+    return count, len_annotation_boxes, incorrect_box_positions_count
 
 
 def get_iou(box_1, box_2):

@@ -3,7 +3,7 @@ from functools import cmp_to_key
 
 import numpy as np
 from application.constants import *
-
+from utils.utils import get_numbers_and_delimeter
 
 def extract_boxes_confidences_classids(outputs, confidence, width, height):
     boxes = []
@@ -102,6 +102,7 @@ def create_matrix_from_lines(lines):
     matrix = []
     last_handwritten = None
     last_equation = None
+
     for line in lines:
         if len(line) <= 1:
             continue
@@ -202,10 +203,9 @@ def get_handwritten_answer(handwritten_number_1, handwritten_number_2):
 
 
 def get_correct_answer(equation):
-    numbers = re.split('[=+-/" /"]', equation)
-    symbols = re.split('[0-9 ]', equation)
+    numbers, symbol = get_numbers_and_delimeter(equation)
 
-    if symbols[0] == '+':
+    if symbol == '+':
         correct_answer = int(numbers[0]) + int(numbers[1])
     else:
         correct_answer = int(numbers[0]) - int(numbers[1])
@@ -229,29 +229,27 @@ def check_answer_of_one_equation(equation, handwritten_number_1, handwritten_num
 
 
 def confirm_results(prediction_matrix):
-    result_matrix = []
+    result_list = []
     for i in range(0, len(prediction_matrix)):
-        result_matrix.append([])
         for j in range(0, len(prediction_matrix[i]), 3):
             answer_result = check_answer_of_one_equation(prediction_matrix[i][j],
                                                          prediction_matrix[i][j + 1],
                                                          prediction_matrix[i][j + 2])
-            result_matrix[i].append(answer_result)
+            result_list.append(answer_result)
 
-    return result_matrix
+    return result_list
 
 
 def get_emotion(results):
     success_count = 0
     undefined_count = 0
     for i in range(0, len(results)):
-        for j in range(0, len(results[i])):
-            if results[i][j] == CORRECT_ANSWER:
-                success_count += 1
-            elif results[i][j] == UNDECIDED_ANSWER:
-                undefined_count += 1
+        if results[i] == CORRECT_ANSWER:
+            success_count += 1
+        elif results[i] == UNDECIDED_ANSWER:
+            undefined_count += 1
 
-    overall = len(results) * len(results[0])
+    overall = len(results)
     if overall == 0:
         return NEUTRAL
     elif success_count / overall > SUCCESS_PROCENT:
@@ -261,3 +259,13 @@ def get_emotion(results):
     else:
         return SAD
 
+
+def get_text_from_result(result):
+    text = ''
+    if result == CORRECT_ANSWER:
+        text = 'Ansewer is correct!'
+    elif result == INCORRECT_ANSWER:
+        text = 'Check this, one more time!'
+    else:
+        text = 'Keep going, you\'re doing great!'
+    return text

@@ -5,17 +5,18 @@ import numpy as np
 
 from application.functions import print_prediction_percent, divide_by_lines, sort_by_x_coordinate, sort_by_y_coordinate, \
     create_matrix_from_lines, print_overall_prediction_correctness, confirm_results, get_emotion, \
-    get_modified_by_indxes, extract_boxes_confidences_classids, print_merged_answer
+    get_modified_by_indxes, extract_boxes_confidences_classids, print_merged_answer, get_text_from_result
 from application.scaner import scan
 from application.expimental_part_functions import compare_predictions, compare_box_predictions
-from utils.utils import add_to_dictionary, get_element_with_the_biggest_value, rotate_img_opencv, resize_image
+from utils.utils import add_to_dictionary, get_element_with_the_biggest_value, rotate_img_opencv, resize_image, \
+    rotate_img
 from application.image_manipulation import recognise_object
-
+from application.outlined_label import OutlinedLabel
 from PIL import Image
 import threading
-from PyQt5.QtCore import pyqtSlot
+from PyQt5.QtCore import pyqtSlot, Qt
 from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QPushButton, QMenuBar, QAction
-from PyQt5.QtGui import QIcon, QPixmap, QGuiApplication
+from PyQt5.QtGui import QIcon, QPixmap, QGuiApplication, QPainter, QPen, QBrush, QLinearGradient, QGradient, QColor
 
 from application.constants import *
 
@@ -27,8 +28,8 @@ class App(QWidget):
         self.title = 'Application'
         self.left = 10
         self.top = 10
-        self.width = 800
-        self.height = 600
+        self.width = WINDOW_WIDTH
+        self.height = WINDOW_HEIGHT
 
         self.widgets()
         self.mode = SIMPLE_MODE
@@ -38,7 +39,7 @@ class App(QWidget):
         self.labels = open(LABELS_PATH).read().strip().split('\n')
 
         # Create a list of colors for the labels
-        self.colors = np.random.randint(0, 255, size=(len(self.labels), 3), dtype='uint8')
+        self.colors = np.random.randint(0, 255, size=(len(self.labels) + 1, 3), dtype='uint8')
 
         # Load weights using OpenCV
         self.net = cv2.dnn.readNetFromDarknet(CONFIG_PATH, WEIGHTS_PATH)
@@ -62,23 +63,19 @@ class App(QWidget):
         self.fps_label = QLabel('FPS: ---------------------------', self)
         self.fps_label.move(0, 0)
 
+        """
         leave_button = QPushButton("End loop", self)
         leave_button.move(10, 550)
         leave_button.clicked.connect(self.end_loop)
+        """
 
         start_button = QPushButton("Start loop", self)
-        start_button.move(10, 500)
+        start_button.move(WINDOW_WIDTH / 2 - 20, WINDOW_HEIGHT - 50)
         start_button.clicked.connect(self.start_tryout)
 
         self.leave_loop = False
 
-        self.objects = []
-
-        self.rows = 0
-        self.columns = 0
-
         self.pred_matrixes = []
-        self.FROM_PHONE = True
 
         self.objects_number = [0, 0]
 
@@ -102,9 +99,11 @@ class App(QWidget):
         self.cap = None
         # self.cap = cv2.VideoCapture(0)
 
+        self.text_labels = []
+
         self.show()
 
-    def show_image(self, image=None, path=''):
+    def show_image(self, image=None, path='', x=0, y=0):
         label = QLabel(self)
         filename = path
         if len(path) == 0:
@@ -113,10 +112,28 @@ class App(QWidget):
 
         pixmap = QPixmap(filename)
         label.setPixmap(pixmap.scaledToWidth(300))
-        label.move(100, 100)
+        label.move(x, y)
         if len(path) == 0:
             os.remove(filename)
         label.show()
+
+    def setup_corner_images(self):
+        corner_image = cv2.imread(CORNER_IMAGE_PATH)
+        corner_image = cv2.resize(corner_image, (int(WINDOW_WIDTH / 6), int(WINDOW_HEIGHT / 6)))
+        x = 0
+        y = 0
+        i = 0
+        while True:
+            self.show_image(image=corner_image, x=x, y=y)
+            i += 1
+            if i == 4:
+                break
+            corner_image = cv2.rotate(corner_image, cv2.cv2.ROTATE_90_CLOCKWISE)
+            if x == 0:                   
+                x = WINDOW_WIDTH - corner_image.shape[0]
+            else:
+                x = 0
+                y = WINDOW_HEIGHT - corner_image.shape[1]
 
     def widgets(self):
         self.setWindowTitle(self.title)
@@ -158,8 +175,10 @@ class App(QWidget):
             self.setStyleSheet("background-color: teal;")
         elif self.mode == SIMPLE_MODE:
             self.setStyleSheet("background-color: pink;")
+            self.setup_corner_images()
         elif self.mode == ALL_IN_ONE_MODE:
             self.setStyleSheet("background-color: white;")
+            self.setup_corner_images()
 
     def client_exit(self):
         exit()
@@ -177,8 +196,10 @@ class App(QWidget):
         # self.clock()
         if self.mode == EXPERIMENTAL_MODE:
             self.go_through_phone_imgs()
-        else:
+        elif self.mode == SIMPLE_MODE:
             self.camera_images_loop()
+        else:
+            self.all_in_one_mode()
 
     def get_approximate_prediction(self):
         prediction_matrix = []
@@ -192,6 +213,11 @@ class App(QWidget):
                         {k: dictionary[k] for k in dictionary if k != el[0]})
                 prediction_matrix[i].append(el[0])
         return prediction_matrix
+
+    def all_in_one_mode(self):
+        img_path = TEST_DATA_PATH + DEBUG_FILENAME + JPG
+        image = cv2.imread(img_path)
+        self.clock(name='capture', img_path=img_path)
 
     def camera_images_loop(self):
         # cap = cv2.VideoCapture(0)
@@ -212,7 +238,7 @@ class App(QWidget):
                 img_path = NEUTRAL_PATH
             else:
                 img_path = SAD_PATH
-            self.show_image(path=img_path)
+            self.show_image(path=img_path, x=100, y=100)
             self.pred_matrixes = []
 
     def go_through_phone_imgs(self):
@@ -241,6 +267,9 @@ class App(QWidget):
                     prediction_matrix = self.get_approximate_prediction()
                     approx_pred = compare_predictions(
                         str(i) + '_' + str(j), prediction_matrix, self.pred_incorrect_merged_file)
+
+                    self.pred_incorrect_merged_file.write(
+                        ' ' + str(self.objects_number[0]) + ' ' + str(self.objects_number[1]) + '\n')
 
                     self.overall_pred_correctness_merged += print_prediction_percent(
                         approx_pred[EQUATIONS] + approx_pred[HANDWRITTEN],
@@ -290,8 +319,7 @@ class App(QWidget):
     def get_prediction(self, image, x, y, w, h, class_id):
         filename = "{}.jpg".format(os.getpid())
         cv2.imwrite(filename, image)
-        prediction, box, is_legitimate = recognise_object(np.array(Image.open(filename)), x, y, w, h, class_id,
-                                                          self.FROM_PHONE)
+        prediction, box, is_legitimate = recognise_object(np.array(Image.open(filename)), x, y, w, h, class_id)
         os.remove(filename)
         return prediction, box, is_legitimate
 
@@ -302,30 +330,37 @@ class App(QWidget):
             box = boxes[indx]
             predictions[indx], boxes[indx], are_legitimate[indx] = self.get_prediction(image, box[0], box[1], box[2],
                                                                                        box[3], class_ids[indx])
-
         return predictions, are_legitimate
 
     def draw_rectangle(self, image, x, y, w, h, colour, class_id, prediction):
         cv2.rectangle(image, (x, y), (x + w, y + h), colour, 2)
         text = "{} ({})".format(self.labels[class_id], prediction)
-        cv2.putText(image, text, (x, y - 5), cv2.FONT_HERSHEY_SIMPLEX, fontScale=0.9, color=colour, thickness=2)
+        self.put_text(image, text, colour, x, y - 5, font_scale=0.9)
 
-    def draw_bounding_boxes(self, image, boxes, confidences, classIDs, colors, predictions, are_legitimate):
-        for i in range(0, len(boxes)):
+    def put_text(self, image, text, colour, x, y, font_scale):
+        cv2.putText(image, text, (x, y), cv2.FONT_HERSHEY_SIMPLEX, fontScale=font_scale, color=colour, thickness=2)
+
+    def draw_bounding_boxes(self, image, boxes_classids_pred, confidences, are_legitimate, results):
+        results_colour = [int(c) for c in self.colors[2]]
+        results_indx = 0
+        for i in range(0, len(boxes_classids_pred)):
             # extract bounding box coordinates
-            x, y = boxes[i][0], boxes[i][1]
-            w, h = boxes[i][2], boxes[i][3]
+            element = boxes_classids_pred[i]
+            box = element[BOX]
+            x, y, w, h = box[0], box[1], box[2], box[3]
 
+            class_id = element[CLASS_ID]
             # draw the bounding box and label on the image
-            color = [int(c) for c in colors[classIDs[i]]]
-            if DEBUG_WITHOUT_PREDICTIONS:
-                prediction = ''
-            else:
+            color = [int(c) for c in self.colors[class_id]]
+            if self.mode == EXPERIMENTAL_MODE:
                 if are_legitimate[i]:
-                    prediction = predictions[i]
+                    prediction = element[PREDICTION]
                 else:
                     prediction = ''
-            self.draw_rectangle(image, x, y, w, h, color, classIDs[i], prediction)
+                self.draw_rectangle(image, x, y, w, h, color, class_id, prediction)
+            if class_id == EQUATIONS and len(results) > 0:
+                self.put_text(image, get_text_from_result(results[results_indx]), results_colour, x - 20, y + 50, 1.5)
+                results_indx += 1
 
         return image
 
@@ -333,7 +368,9 @@ class App(QWidget):
         pred_matrix_row_count = len(pred_matrix[0])
         self.objects_number = [int(pred_matrix_row_count / 3) * len(pred_matrix),
                                int(pred_matrix_row_count / 3) * 2 * len(pred_matrix)]
+
         right_count = compare_predictions(name, pred_matrix, self.pred_incorrect_file)
+        self.pred_incorrect_file.write(' ' + str(self.objects_number[0]) + ' ' + str(self.objects_number[1]) + '\n')
         self.overall_pred_correctness += print_prediction_percent(right_count[EQUATIONS] + right_count[HANDWRITTEN],
                                                                   self.objects_number[EQUATIONS] + self.objects_number[
                                                                       HANDWRITTEN],
@@ -350,6 +387,8 @@ class App(QWidget):
         lines = divide_by_lines(boxes, predictions, class_ids, are_legitimate)
         lines = sort_by_x_coordinate(lines)
         lines = sort_by_y_coordinate(lines)
+        boxes_classids_pred = [item for sublist in lines for item in sublist]
+
         matrix = create_matrix_from_lines(lines)
         if self.mode == EXPERIMENTAL_MODE:
             self.add_pred_to_file(matrix, name)
@@ -363,6 +402,11 @@ class App(QWidget):
                 if pred_matrix_is_empty:
                     self.pred_matrixes[i].append({})
                 add_to_dictionary(self.pred_matrixes[i][j], matrix[i][j])
+        results = confirm_results(matrix)
+
+        if self.mode == EXPERIMENTAL_MODE or self.mode == ALL_IN_ONE_MODE:
+            self.post_text(results, matrix)
+        return results, boxes_classids_pred
 
     def make_prediction(self, image, filename):
         if image.shape[2] == 1:
@@ -381,12 +425,62 @@ class App(QWidget):
         idxs = cv2.dnn.NMSBoxes(boxes, confidences, CONFIDENCE, THRESHOLD)
 
         boxes, confidences, classIDs = get_modified_by_indxes(boxes, confidences, classIDs, idxs)
-        if DEBUG_WITHOUT_PREDICTIONS:
-            predictions = None
-        else:
-            predictions, are_legitimate = self.prediction_object(image, boxes, classIDs)
-            self.add_prediction_matrix(boxes, predictions, classIDs, are_legitimate, filename[:-2])
-        return boxes, confidences, classIDs, predictions, are_legitimate
+
+        predictions, are_legitimate = self.prediction_object(image, boxes, classIDs)
+        results, boxes_classids_pred = self.add_prediction_matrix(boxes, predictions, classIDs, are_legitimate,
+                                                                  filename[:-2])
+        return boxes_classids_pred, confidences, are_legitimate, results
+    """
+    def paintEvent(self, e):
+        painter = QPainter(self)
+        painter.setPen(QPen(Qt.black, 5, Qt.SolidLine))
+        # painter.setBrush(QBrush(Qt.red, Qt.SolidPattern))
+        painter.setBrush(QBrush(Qt.white, Qt.SolidPattern))
+        painter.drawRect(50, 50, WINDOW_WIDTH - 100, WINDOW_HEIGHT - 200)
+    """
+
+    def clear_labels(self):
+        for label in self.text_labels:
+            label.clear()
+        self.text_labels = []
+
+    def post_text(self, results, matrix):
+        self.clear_labels()
+        #self.draw_board()
+        column_number = len(matrix[0])
+        rows_number = len(matrix)
+        xs, ys = [50] * column_number, [50] * rows_number
+        column_size = int(WINDOW_WIDTH / column_number) - 10
+        for i in range(1, column_number):
+            xs[i] = xs[i - 1] + column_size
+        row_size = int(WINDOW_HEIGHT / rows_number) - 10
+        for i in range(1, rows_number):
+            ys[i] = ys[i - 1] + row_size
+
+        k = 0
+        for i in range(0, rows_number):
+            for j in range(0, column_number):
+                if len(matrix[i][j]) == 0:
+                    continue
+                label = OutlinedLabel(matrix[i][j], self)
+                linearGrad = QLinearGradient(0, 1, 0, 0)
+                linearGrad.setCoordinateMode(QGradient.ObjectBoundingMode)
+                linearGrad.setColorAt(0, QColor('#0fd850'))
+                linearGrad.setColorAt(1, QColor('#f9f047'))
+                label.setBrush(linearGrad)
+                label.setPen(Qt.darkGreen)
+                label.setStyleSheet('font-family: Bubblegum Sans; font-size: 20pt')
+                label.move(xs[j], ys[i])
+                label.show()
+                self.text_labels.append(label)
+                if j % 3 == 0:
+                    results_label = QLabel(get_text_from_result(results[k]), self)
+                    results_label.move(xs[j], ys[i] - 30)
+                    results_label.show()
+                    self.text_labels.append(results_label)
+                    k += 1
+        self.show()
+        QGuiApplication.processEvents()
 
     def clock(self, name, image=None, img_path=None):
         self.frame_id += 1
@@ -397,19 +491,22 @@ class App(QWidget):
         else:
             image = scan(to_crop=True, image=rotate_img_opencv(image, 180))
 
-        boxes, confidences, classIDs, predictions, are_legitimate = self.make_prediction(image, name)
+        boxes_classids_pred, confidences, are_legitimate, results = self.make_prediction(image, name)
 
         if self.mode == EXPERIMENTAL_MODE:
-            prediction_compare, incorrect_class_ids_count, incorrect_box_positions_count = compare_box_predictions(
-                boxes, classIDs, name)
-            print('Prediction box comparecent percent: ' + str(prediction_compare))
-            self.pred_boxes_file.write(str(prediction_compare) + '\n')
-            print('Incorrect box predicitons: ' + str(incorrect_class_ids_count) + ' ' + str(incorrect_box_positions_count))
-            self.boxes_incorrect_file.write(
-                str(incorrect_class_ids_count) + ' ' + str(incorrect_box_positions_count) + '\n')
-            self.overall_box_pred_correctness += prediction_compare
+            prediction_compare, len_annotation_boxes, incorrect_box_positions_count = compare_box_predictions(
+                boxes_classids_pred, name)
+            percent = prediction_compare / len_annotation_boxes
+            print('Prediction box comparecent percent: ' + str(percent))
+            self.pred_boxes_file.write(str(percent) + '\n')
+            missing_boxes_count = len_annotation_boxes - prediction_compare
+            print('Incorrect box predicitons: ' + str(incorrect_box_positions_count) + ' ' + str(missing_boxes_count) +
+                  ' ' + str(len_annotation_boxes))
+            self.boxes_incorrect_file.write(str(incorrect_box_positions_count) + ' ' + str(missing_boxes_count) + ' ' +
+                                            str(len_annotation_boxes) + '\n')
+            self.overall_box_pred_correctness += percent
 
-        image = self.draw_bounding_boxes(image, boxes, confidences, classIDs, self.colors, predictions, are_legitimate)
+        image = self.draw_bounding_boxes(image, boxes_classids_pred, confidences, are_legitimate, results)
 
         # show the output image
         if BOOL_SHOW:
@@ -425,9 +522,11 @@ class App(QWidget):
         self.fps_label.setText("FPS: " + str(fps))
         self.fps_label.show()
 
-        if self.mode == EXPERIMENTAL_MODE:
-            self.show_image(image=image)
-            QGuiApplication.processEvents()
+        #if self.mode == EXPERIMENTAL_MODE:
+        #    self.show_image(image=image)
+        #    QGuiApplication.processEvents()
+
+
         # self.var.set("FPS: " + str(fps))
 
 
