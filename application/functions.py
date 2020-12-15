@@ -1,9 +1,14 @@
 import re
+import cv2
 from functools import cmp_to_key
 
 import numpy as np
+from PIL.Image import Image
+
 from application.constants import *
+from application.image_manipulation import recognise_object
 from utils.utils import get_numbers_and_delimeter
+
 
 def extract_boxes_confidences_classids(outputs, confidence, width, height):
     boxes = []
@@ -269,3 +274,13 @@ def get_text_from_result(result):
     else:
         text = 'Keep going, you\'re doing great!'
     return text
+
+
+def prediction_object(image, boxes, class_ids):
+    predictions = [''] * len(boxes)
+    are_legitimate = [True] * len(boxes)
+    for indx in range(0, len(boxes)):
+        box = boxes[indx]
+        predictions[indx], boxes[indx], are_legitimate[indx] = recognise_object(image, box[0], box[1], box[2],
+                                                                                   box[3], class_ids[indx])
+    return predictions, are_legitimate

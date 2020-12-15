@@ -5,19 +5,15 @@ import numpy as np
 
 from application.functions import print_prediction_percent, divide_by_lines, sort_by_x_coordinate, sort_by_y_coordinate, \
     create_matrix_from_lines, print_overall_prediction_correctness, confirm_results, get_emotion, \
-    get_modified_by_indxes, extract_boxes_confidences_classids, print_merged_answer, get_text_from_result
+    get_modified_by_indxes, extract_boxes_confidences_classids, print_merged_answer, get_text_from_result, \
+    prediction_object
 from application.scaner import scan
 from application.expimental_part_functions import compare_predictions, compare_box_predictions
-from utils.utils import add_to_dictionary, get_element_with_the_biggest_value, rotate_img_opencv, resize_image, \
-    rotate_img
-from application.image_manipulation import recognise_object
+from utils.utils import add_to_dictionary, get_element_with_the_biggest_value, rotate_img_opencv
 from application.outlined_label import OutlinedLabel
-from PIL import Image
-import threading
 from PyQt5.QtCore import pyqtSlot, Qt
 from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QPushButton, QMenuBar, QAction
-from PyQt5.QtGui import QIcon, QPixmap, QGuiApplication, QPainter, QPen, QBrush, QLinearGradient, QGradient, QColor, \
-    QFont
+from PyQt5.QtGui import QPixmap, QGuiApplication, QLinearGradient, QGradient, QColor, QFont
 
 from application.constants import *
 
@@ -34,7 +30,7 @@ class App(QWidget):
         self.widgets()
         self.mode = SIMPLE_MODE
         self.set_background()
-
+        #QFontDatabase.addApplicationFont("../fonts/BubblegumSans-Regular.ttf")
         # Get the labels
         self.labels = open(LABELS_PATH).read().strip().split('\n')
 
@@ -62,19 +58,15 @@ class App(QWidget):
 
         self.fps_label = None
 
-        """
-        leave_button = QPushButton("End loop", self)
-        leave_button.move(10, 550)
-        leave_button.clicked.connect(self.end_loop)
-        """
-
         self.start_button = QPushButton("START", self)
-        self.start_button.move(WINDOW_WIDTH / 2 - 20, WINDOW_HEIGHT - 50)
-        self.start_button.setGeometry(WINDOW_WIDTH / 2 - 100, WINDOW_HEIGHT / 2 - 50, WINDOW_WIDTH / 6, WINDOW_HEIGHT / 8)
-        self.start_button.setFont(QFont('Comic Sans MS', 50))
+        self.start_button.setFont(QFont("Tekton Pro", 50))
+        self.start_button.setStyleSheet("background-color: #b31c48;"
+                                        "border: 5px solid;"
+                                        "border-color: #003286;"
+                                        "color: #ffda00")
         self.start_button.clicked.connect(self.start_tryout)
 
-        self.leave_loop = False
+        self.create_start_button()
 
         self.pred_matrixes = []
 
@@ -102,13 +94,15 @@ class App(QWidget):
 
         self.text_labels = []
 
+        self.filenames_list = []
+        self.filename_indx = 0
         self.show()
 
     def show_image(self, x, y, width, height, image=None, path=''):
         label = QLabel(self)
         filename = path
         if len(path) == 0:
-            filename = "{}.png".format(os.getpid())
+            filename = "../temporary/{}.png".format(os.getpid())
             cv2.imwrite(filename, image)
 
         pixmap = QPixmap(filename)
@@ -147,6 +141,16 @@ class App(QWidget):
             else:
                 x = 0
 
+    def create_start_button(self):
+        self.start_button.setGeometry(WINDOW_WIDTH / 2 - 100, WINDOW_HEIGHT / 2 - 50, WINDOW_WIDTH / 6,
+                                      WINDOW_HEIGHT / 8)
+        self.start_button.setText('START')
+
+    def create_next_button(self):
+        self.start_button.setGeometry(WINDOW_WIDTH / 2 - 100, WINDOW_HEIGHT - 60, WINDOW_WIDTH / 8,
+                                     WINDOW_HEIGHT / 14)
+        self.start_button.setText('Next')
+
     def widgets(self):
         self.setWindowTitle(self.title)
         self.setGeometry(self.left, self.top, self.width, self.height)
@@ -166,7 +170,7 @@ class App(QWidget):
         allModeAction.triggered.connect(self.turn_on_all_mode)
         file.addAction(allModeAction)
 
-        exitAction = QAction("Exit", self)
+        exitAction = QAction("Exity", self)
         exitAction.triggered.connect(self.client_exit)
         file.addAction(exitAction)
 
@@ -174,14 +178,20 @@ class App(QWidget):
         self.mode = EXPERIMENTAL_MODE
         self.set_background()
         self.setup_fps_label()
+        self.create_start_button()
+        self.clear_labels()
 
     def turn_on_simple_mode(self):
         self.mode = SIMPLE_MODE
         self.set_background()
+        self.create_start_button()
+        self.clear_labels()
 
     def turn_on_all_mode(self):
         self.mode = ALL_IN_ONE_MODE
         self.set_background()
+        self.create_start_button()
+        self.clear_labels()
 
     def set_background(self):
         if self.mode == EXPERIMENTAL_MODE:
@@ -193,27 +203,30 @@ class App(QWidget):
             self.setStyleSheet("background-color: white;")
             self.setup_corner_images()
 
+    @pyqtSlot()
     def client_exit(self):
         exit()
 
     @pyqtSlot()
-    def end_loop(self):
-        self.leave_loop = True
-
-    @pyqtSlot()
     def start_tryout(self):
-        self.start_button.deleteLater()
+        self.create_next_button()
         self.start_loop()
 
     def start_loop(self):
-        self.leave_loop = True
-        # self.clock()
         if self.mode == EXPERIMENTAL_MODE:
             self.go_through_phone_imgs()
-        elif self.mode == SIMPLE_MODE:
-            self.camera_images_loop()
         else:
-            self.all_in_one_mode()
+            if len(self.filenames_list) == 0:
+                for filename in os.listdir(PROGRAM_IMGS_PATH):
+                    self.filenames_list.append(PROGRAM_IMGS_PATH + filename)
+            if self.mode == SIMPLE_MODE:
+                self.camera_images_loop()
+            else:
+                self.all_in_one_mode()
+
+            self.filename_indx += 1
+            if len(self.filenames_list) == self.filename_indx:
+                self.filename_indx = 0
 
     def get_approximate_prediction(self):
         prediction_matrix = []
@@ -229,14 +242,15 @@ class App(QWidget):
         return prediction_matrix
 
     def all_in_one_mode(self):
-        img_path = TEST_DATA_PATH + DEBUG_FILENAME + JPG
-        image = cv2.imread(img_path)
+        img_path = self.filenames_list[self.filename_indx]
         self.clock(name='capture', img_path=img_path)
 
     def camera_images_loop(self):
         # cap = cv2.VideoCapture(0)
+        img_path = self.filenames_list[self.filename_indx]
+        self.clock(name='capture', img_path=img_path)
 
-        self.clock(name=DEBUG_FILENAME, img_path=TEST_DATA_PATH + DEBUG_FILENAME + JPG)
+        #self.clock(name=DEBUG_FILENAME, img_path=TEST_DATA_PATH + DEBUG_FILENAME + JPG)
         #time.sleep(5)
         #_, frame = self.cap.read()
         #self.clock(name='capture', image=frame)
@@ -252,7 +266,7 @@ class App(QWidget):
                 img_path = NEUTRAL_PATH
             else:
                 img_path = SAD_PATH
-            self.show_image(path=img_path, x=100, y=100)
+            self.show_image(WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2, WINDOW_WIDTH / 4, WINDOW_HEIGHT / 4, path=img_path)
             self.pred_matrixes = []
 
     def go_through_phone_imgs(self):
@@ -330,22 +344,6 @@ class App(QWidget):
 
         self.end_loop()
 
-    def get_prediction(self, image, x, y, w, h, class_id):
-        filename = "{}.jpg".format(os.getpid())
-        cv2.imwrite(filename, image)
-        prediction, box, is_legitimate = recognise_object(np.array(Image.open(filename)), x, y, w, h, class_id)
-        os.remove(filename)
-        return prediction, box, is_legitimate
-
-    def prediction_object(self, image, boxes, class_ids):
-        predictions = [''] * len(boxes)
-        are_legitimate = [True] * len(boxes)
-        for indx in range(0, len(boxes)):
-            box = boxes[indx]
-            predictions[indx], boxes[indx], are_legitimate[indx] = self.get_prediction(image, box[0], box[1], box[2],
-                                                                                       box[3], class_ids[indx])
-        return predictions, are_legitimate
-
     def draw_rectangle(self, image, x, y, w, h, colour, class_id, prediction):
         cv2.rectangle(image, (x, y), (x + w, y + h), colour, 2)
         text = "{} ({})".format(self.labels[class_id], prediction)
@@ -372,7 +370,7 @@ class App(QWidget):
                 else:
                     prediction = ''
                 self.draw_rectangle(image, x, y, w, h, color, class_id, prediction)
-            if class_id == EQUATIONS and len(results) > 0:
+            if class_id == EQUATIONS and results_indx > len(results) > 0:
                 self.put_text(image, get_text_from_result(results[results_indx]), results_colour, x - 20, y + 50, 1.5)
                 results_indx += 1
 
@@ -440,7 +438,7 @@ class App(QWidget):
 
         boxes, confidences, classIDs = get_modified_by_indxes(boxes, confidences, classIDs, idxs)
 
-        predictions, are_legitimate = self.prediction_object(image, boxes, classIDs)
+        predictions, are_legitimate = prediction_object(image, boxes, classIDs)
         results, boxes_classids_pred = self.add_prediction_matrix(boxes, predictions, classIDs, are_legitimate,
                                                                   filename[:-2])
         return boxes_classids_pred, confidences, are_legitimate, results
@@ -480,23 +478,26 @@ class App(QWidget):
 
         k = 0
         for i in range(0, rows_number):
+            new_j = 0
             for j in range(0, column_number * 3):
+                if new_j > j:
+                    continue
                 if len(matrix[i][j]) != 0:
-
-                    label = OutlinedLabel(matrix[i][j], self)
-                    linearGrad = QLinearGradient(0, 1, 0, 0)
-                    linearGrad.setCoordinateMode(QGradient.ObjectBoundingMode)
-                    linearGrad.setColorAt(0, QColor('#0fd850'))
-                    linearGrad.setColorAt(1, QColor('#f9f047'))
-                    label.setBrush(linearGrad)
-                    label.setPen(Qt.darkGreen)
-                    label.setStyleSheet('font-family: Bubblegum Sans; font-size: 20pt')
+                    label = QLabel(matrix[i][j], self)
+                    label.setStyleSheet("color: #003286;"
+                                        "font-family: Tekton Pro;"
+                                        "font-size: 30pt")
                     label.move(xs[j], ys[i])
-                    label.show()
                     self.text_labels.append(label)
+                    label.show()
+                elif j % 3 == 0:
+                    new_j = j + 3
                 if j % 3 == 0:
                     results_label = QLabel(get_text_from_result(results[k]), self)
                     results_label.move(xs[j], ys[i] - 30)
+                    results_label.setStyleSheet("color: #b31c48;"
+                                                "font-family: Tekton Pro;"
+                                                "font-size: 20pt")
                     results_label.show()
                     self.text_labels.append(results_label)
                     k += 1
