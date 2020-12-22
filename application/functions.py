@@ -248,19 +248,21 @@ def confirm_results(prediction_matrix):
 def get_emotion(results):
     success_count = 0
     undefined_count = 0
+    defined_count = 0
     for i in range(0, len(results)):
         if results[i] == CORRECT_ANSWER:
             success_count += 1
+            defined_count += 1
         elif results[i] == UNDECIDED_ANSWER:
             undefined_count += 1
+        else:
+            defined_count += 1
 
     overall = len(results)
-    if overall == 0:
+    if overall == 0 or defined_count == 0:
         return NEUTRAL
-    elif success_count / overall > SUCCESS_PROCENT:
+    elif success_count / defined_count > SUCCESS_PROCENT:
         return SMILE
-    elif undefined_count / overall > SUCCESS_PROCENT:
-        return NEUTRAL
     else:
         return SAD
 

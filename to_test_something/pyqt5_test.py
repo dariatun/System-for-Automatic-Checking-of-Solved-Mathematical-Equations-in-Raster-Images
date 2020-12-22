@@ -13,6 +13,7 @@ class App(QWidget):
         self.width = 640
         self.height = 480
         self.start_button = None
+        self.count = 0
         self.initUI()
 
     def initUI(self):
@@ -29,9 +30,15 @@ class App(QWidget):
         self.show()
 
     def handle_start_button(self):
-        print('x')
-        self.start_button.setGeometry(60, 60, 50, 50)
-        self.start_button.setText("New")
+        if self.count == 0:
+            print('x')
+            self.start_button.setGeometry(60, 60, 50, 50)
+            self.start_button.setText("New")
+            self.count += 1
+        else:
+            print('y')
+            self.start_button.setGeometry(120, 120, 50, 50)
+            self.start_button.setText("New new")
 
 
 if __name__ == '__main__':

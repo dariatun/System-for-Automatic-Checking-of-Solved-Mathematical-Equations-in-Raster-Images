@@ -29,7 +29,6 @@ class App(QWidget):
         self.height = WINDOW_HEIGHT
         self.widgets()
         self.mode = SIMPLE_MODE
-        self.set_background()
         #QFontDatabase.addApplicationFont("../fonts/BubblegumSans-Regular.ttf")
         # Get the labels
         self.labels = open(LABELS_PATH).read().strip().split('\n')
@@ -92,10 +91,12 @@ class App(QWidget):
         self.cap = None
         # self.cap = cv2.VideoCapture(0)
 
-        self.text_labels = []
+        self.showed_labels = []
 
         self.filenames_list = []
         self.filename_indx = 0
+        self.set_background()
+
         self.show()
 
     def show_image(self, x, y, width, height, image=None, path=''):
@@ -110,6 +111,7 @@ class App(QWidget):
         label.move(x, y)
         if len(path) == 0:
             os.remove(filename)
+        self.showed_labels.append(label)
         label.show()
 
     def setup_fps_label(self):
@@ -145,6 +147,7 @@ class App(QWidget):
         self.start_button.setGeometry(WINDOW_WIDTH / 2 - 100, WINDOW_HEIGHT / 2 - 50, WINDOW_WIDTH / 6,
                                       WINDOW_HEIGHT / 8)
         self.start_button.setText('START')
+        self.start_button.show()
 
     def create_next_button(self):
         self.start_button.setGeometry(WINDOW_WIDTH / 2 - 100, WINDOW_HEIGHT - 60, WINDOW_WIDTH / 8,
@@ -174,24 +177,27 @@ class App(QWidget):
         exitAction.triggered.connect(self.client_exit)
         file.addAction(exitAction)
 
+    @pyqtSlot()
     def turn_on_experimental_mode(self):
         self.mode = EXPERIMENTAL_MODE
-        self.set_background()
+        self.clear_labels()
         self.setup_fps_label()
         self.create_start_button()
-        self.clear_labels()
+        self.set_background()
 
+    @pyqtSlot()
     def turn_on_simple_mode(self):
         self.mode = SIMPLE_MODE
-        self.set_background()
-        self.create_start_button()
         self.clear_labels()
+        self.create_start_button()
+        self.set_background()
 
+    @pyqtSlot()
     def turn_on_all_mode(self):
         self.mode = ALL_IN_ONE_MODE
-        self.set_background()
-        self.create_start_button()
         self.clear_labels()
+        self.create_start_button()
+        self.set_background()
 
     def set_background(self):
         if self.mode == EXPERIMENTAL_MODE:
@@ -202,6 +208,8 @@ class App(QWidget):
         elif self.mode == ALL_IN_ONE_MODE:
             self.setStyleSheet("background-color: white;")
             self.setup_corner_images()
+        self.show()
+        QGuiApplication.processEvents()
 
     @pyqtSlot()
     def client_exit(self):
@@ -216,17 +224,29 @@ class App(QWidget):
         if self.mode == EXPERIMENTAL_MODE:
             self.go_through_phone_imgs()
         else:
-            if len(self.filenames_list) == 0:
-                for filename in os.listdir(PROGRAM_IMGS_PATH):
-                    self.filenames_list.append(PROGRAM_IMGS_PATH + filename)
+            self.create_filename_list()
+            img_path = self.filenames_list[self.filename_indx]
+            print(img_path)
+            self.clock(name='capture', img_path=img_path)
+            prediction_matrix = self.get_approximate_prediction()
+            results = confirm_results(prediction_matrix)
             if self.mode == SIMPLE_MODE:
-                self.camera_images_loop()
+                self.show_emotion(results)
             else:
-                self.all_in_one_mode()
+                self.show_expressions(results, prediction_matrix)
 
             self.filename_indx += 1
             if len(self.filenames_list) == self.filename_indx:
                 self.filename_indx = 0
+
+    def create_filename_list(self):
+        if len(self.filenames_list) == 0:
+            for i in range(0, 13):
+                self.filenames_list.append(PROGRAM_IMGS_PATH + str(i) + JPG)
+            #for filename in os.listdir(PROGRAM_IMGS_PATH):
+            #    pre, ext = os.path.splitext(filename)
+            #    if ext == '.jpg' or ext == '.JPG':
+            #        self.filenames_list.append(PROGRAM_IMGS_PATH + filename)
 
     def get_approximate_prediction(self):
         prediction_matrix = []
@@ -241,33 +261,15 @@ class App(QWidget):
                 prediction_matrix[i].append(el[0])
         return prediction_matrix
 
-    def all_in_one_mode(self):
-        img_path = self.filenames_list[self.filename_indx]
-        self.clock(name='capture', img_path=img_path)
-
-    def camera_images_loop(self):
-        # cap = cv2.VideoCapture(0)
-        img_path = self.filenames_list[self.filename_indx]
-        self.clock(name='capture', img_path=img_path)
-
-        #self.clock(name=DEBUG_FILENAME, img_path=TEST_DATA_PATH + DEBUG_FILENAME + JPG)
-        #time.sleep(5)
-        #_, frame = self.cap.read()
-        #self.clock(name='capture', image=frame)
-
-        prediction_matrix = self.get_approximate_prediction()
-        results = confirm_results(prediction_matrix)
-
-        if self.mode == SIMPLE_MODE:
-            emotion = get_emotion(results)
-            if emotion == SMILE:
-                img_path = SMILE_PATH
-            elif emotion == NEUTRAL:
-                img_path = NEUTRAL_PATH
-            else:
-                img_path = SAD_PATH
-            self.show_image(WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2, WINDOW_WIDTH / 4, WINDOW_HEIGHT / 4, path=img_path)
-            self.pred_matrixes = []
+    def show_emotion(self, results):
+        emotion = get_emotion(results)
+        if emotion == SMILE:
+            img_path = SMILE_PATH
+        elif emotion == NEUTRAL:
+            img_path = NEUTRAL_PATH
+        else:
+            img_path = SAD_PATH
+        self.show_image(WINDOW_WIDTH / 4, WINDOW_HEIGHT / 4, WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2, path=img_path)
 
     def go_through_phone_imgs(self):
         self.pred_boxes_file = open(OUTPUT_PATH + 'pred_boxes_percent' + TXT, "w+")
@@ -364,12 +366,12 @@ class App(QWidget):
             class_id = element[CLASS_ID]
             # draw the bounding box and label on the image
             color = [int(c) for c in self.colors[class_id]]
-            if self.mode == EXPERIMENTAL_MODE:
-                if are_legitimate[i]:
-                    prediction = element[PREDICTION]
-                else:
-                    prediction = ''
-                self.draw_rectangle(image, x, y, w, h, color, class_id, prediction)
+            #if self.mode == EXPERIMENTAL_MODE:
+            if are_legitimate[i]:
+                prediction = element[PREDICTION]
+            else:
+                prediction = ''
+            self.draw_rectangle(image, x, y, w, h, color, class_id, prediction)
             if class_id == EQUATIONS and results_indx > len(results) > 0:
                 self.put_text(image, get_text_from_result(results[results_indx]), results_colour, x - 20, y + 50, 1.5)
                 results_indx += 1
@@ -416,8 +418,8 @@ class App(QWidget):
                 add_to_dictionary(self.pred_matrixes[i][j], matrix[i][j])
         results = confirm_results(matrix)
 
-        if self.mode == EXPERIMENTAL_MODE or self.mode == ALL_IN_ONE_MODE:
-            self.post_text(results, matrix)
+        if self.mode == EXPERIMENTAL_MODE: #or self.mode == ALL_IN_ONE_MODE:
+            self.show_expressions(results, matrix)
         return results, boxes_classids_pred
 
     def make_prediction(self, image, filename):
@@ -452,11 +454,11 @@ class App(QWidget):
     """
 
     def clear_labels(self):
-        for label in self.text_labels:
+        for label in self.showed_labels:
             label.clear()
-        self.text_labels = []
+        self.showed_labels = []
 
-    def post_text(self, results, matrix):
+    def show_expressions(self, results, matrix):
         self.clear_labels()
         #self.draw_board()
         column_number = int(len(matrix[0]) / 3)
@@ -488,7 +490,7 @@ class App(QWidget):
                                         "font-family: Tekton Pro;"
                                         "font-size: 30pt")
                     label.move(xs[j], ys[i])
-                    self.text_labels.append(label)
+                    self.showed_labels.append(label)
                     label.show()
                 elif j % 3 == 0:
                     new_j = j + 3
@@ -499,7 +501,7 @@ class App(QWidget):
                                                 "font-family: Tekton Pro;"
                                                 "font-size: 20pt")
                     results_label.show()
-                    self.text_labels.append(results_label)
+                    self.showed_labels.append(results_label)
                     k += 1
         QGuiApplication.processEvents()
 

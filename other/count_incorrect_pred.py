@@ -44,10 +44,13 @@ def calculate_for_one(file_box, points_box, file_pred, points_pred):
         numbers_pred = get_numbers(lines_pred[i])
         sum_box = add_numbers_to_dict(numbers_box, points_box)
         sum_pred = add_numbers_to_dict(numbers_pred, points_pred)
+        #if sum_box + sum_pred < 1:
+            #print(i)
         add_to_dictionary(dict, sum_box + sum_pred)
     new_dict = {0: 0, 1: 0, 2: 0, 3: 0}
     for k, v in sorted(dict.items()):
-        if k < 1:
+        print(v)
+        """if k < 1:
             new_dict[0] += v
         elif k < 2:
             new_dict[1] += v
@@ -55,9 +58,10 @@ def calculate_for_one(file_box, points_box, file_pred, points_pred):
             new_dict[2] += v
         else:
             new_dict[3] += v
+        """
 
-    for k, v in sorted(new_dict.items()):
-        print(k, v)
+    #for k, v in sorted(dict.items()):
+    #    print(k, v)
 
 
 def print_dict(file_box, file_pred, file_pred_merged):
@@ -72,8 +76,9 @@ def print_overall(file_box, file_pred, file_pred_merged):
 
 
 if __name__ == "__main__":
-    file_box = open(OUTPUT_PATH + "boxes_incorrect" + TXT, 'r')
-    file_pred = open(OUTPUT_PATH + "pred_incorrect" + TXT, 'r')
-    file_pred_merged = open(OUTPUT_PATH + "pred_incorrect_merged" + TXT, 'r')
+    output_path = "../different_results/new_files_old_resuls?/"
+    file_box = open(output_path + "boxes_incorrect" + TXT, 'r')
+    file_pred = open(output_path + "pred_incorrect" + TXT, 'r')
+    file_pred_merged = open(output_path + "pred_incorrect_merged" + TXT, 'r')
     print_dict(file_box, file_pred, file_pred_merged)
     print('Finished')
