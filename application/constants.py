@@ -21,10 +21,10 @@ EXPERIMENTAL_PART = False
 
 COMPARE_POSSIBILITIES = True
 
-TEST_DATA_ANNOTATIONS_PATH = '../test_data_annotations/'
-TEST_DATA_BOX_ANNOTATIONS_PATH = '../test_data_annotations/000/'
-OUTPUT_PATH = '../output/'
-TEST_DATA_PATH = '../test_data/'
+TEST_DATA_ANNOTATIONS_PATH = 'test_data_annotations/'
+TEST_DATA_BOX_ANNOTATIONS_PATH = 'test_data_annotations/000/'
+OUTPUT_PATH = 'output/'
+TEST_DATA_PATH = 'test_data/'
 
 NUMBER_OF_IMAGE_TYPES = 5
 NUMBER_OF_IMAGES = 20
@@ -39,9 +39,9 @@ JPG = '.jpg'
 TXT = '.txt'
 
 # model variables
-LABELS_PATH = '../model/obj.names'
-CONFIG_PATH = '../model/yolov3.cfg'
-WEIGHTS_PATH = '../model/yolov3.weights'
+LABELS_PATH = 'model/obj.names'
+CONFIG_PATH = 'model/yolov3.cfg'
+WEIGHTS_PATH = 'model/yolov3.weights'
 BOOL_USE_GPU = False
 BOOL_SAVE = True
 BOOL_SHOW = False
@@ -63,6 +63,7 @@ POSSIBLE_WIDTH_BETWEEN_CLOSE_OBJECTS = 100
 EXPERIMENTAL_MODE = 0
 SIMPLE_MODE = 1
 ALL_IN_ONE_MODE = 2
+VIDEO_MODE = 3
 
 SUCCESS_PROCENT = 0.5
 
@@ -70,21 +71,27 @@ SMILE = 0
 NEUTRAL = 1
 SAD = 2
 
-EMOTION_PATH = '../images/emotions/'
+EMOTION_PATH = 'images/emotions/'
 SMILE_PATH = EMOTION_PATH + 'happy.png'
 NEUTRAL_PATH = EMOTION_PATH + 'neutral.png'
 SAD_PATH = EMOTION_PATH + 'sad.png'
 
-REACTION_PATH = '../images/reactions/'
+REACTION_PATH = 'images/reactions/'
 RIGHT_IMG_PATH = REACTION_PATH + 'right.png'
 WRONG_IMG_PATH = REACTION_PATH + 'wrong.png'
 
-CORNER_PATH = '../images/corner/'
+CORNER_PATH = 'images/corner/'
 STAR_CORNER_IMG_PATH = CORNER_PATH + 'star.png'
 LINES_CORNER_IMG_PATH = CORNER_PATH + 'lines.png'
 
 CORNER_IMAGE_PATH = LINES_CORNER_IMG_PATH
 
-PROGRAM_IMGS_PATH = '../images/program_images/'
+DEFAULT_PROGRAM_IMGS_PATH = 'images/program_images/'
+
 WINDOW_WIDTH = 1200
 WINDOW_HEIGHT = 750
+
+DEFAULT_IMG_NAME = 'capture'
+
+CNN_KERAS_PATH = '/Users/dariatunina/mach-lerinig/Handwritten-Digit-Recognition-using-Deep-Learning/CNN_Keras'
+SAVED_WEIGHTS_PATH = 'cnn_weights.hdf5'

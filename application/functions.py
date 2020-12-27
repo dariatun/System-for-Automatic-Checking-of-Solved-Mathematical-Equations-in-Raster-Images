@@ -10,7 +10,7 @@ from application.image_manipulation import recognise_object
 from utils.utils import get_numbers_and_delimeter
 
 
-def extract_boxes_confidences_classids(outputs, confidence, width, height):
+def extract_boxes_confidences_classids(outputs, width, height):
     boxes = []
     confidences = []
     classIDs = []
@@ -23,7 +23,7 @@ def extract_boxes_confidences_classids(outputs, confidence, width, height):
             conf = scores[classID]
 
             # Consider only the predictions that are above the confidence threshold
-            if conf > confidence:  # (classID == 1 and conf > confidence) or (classID == 0 and conf > 0.4):
+            if conf > CONFIDENCE:  # (classID == 1 and conf > confidence) or (classID == 0 and conf > 0.4):
                 # Scale the bounding box back to t:
                 # Scale the bounding box back to the size of the image
                 box = detection[0:4] * np.array([width, height, width, height])
@@ -260,11 +260,11 @@ def get_emotion(results):
 
     overall = len(results)
     if overall == 0 or defined_count == 0:
-        return NEUTRAL
+        return NEUTRAL, success_count, defined_count
     elif success_count / defined_count > SUCCESS_PROCENT:
-        return SMILE
+        return SMILE, success_count, defined_count
     else:
-        return SAD
+        return SAD, success_count, defined_count
 
 
 def get_text_from_result(result):

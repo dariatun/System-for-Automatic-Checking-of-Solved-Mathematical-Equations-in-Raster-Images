@@ -1,11 +1,10 @@
 import sys
 import numpy as np
 from keras.optimizers import SGD
-
+from application.constants import CNN_KERAS_PATH, SAVED_WEIGHTS_PATH
 
 # path to the directory with the CNN_Keras
-CNN_Keras_PATH = '/Users/dariatunina/mach-lerinig/Handwritten-Digit-Recognition-using-Deep-Learning/CNN_Keras'
-sys.path.append(CNN_Keras_PATH)
+sys.path.append(CNN_KERAS_PATH)
 from cnn.neural_network import CNN
 
 DEBUG = False
@@ -22,7 +21,7 @@ def recognise_handwritten_image(image):
 
     sgd = SGD(lr=0.01, decay=1e-6, momentum=0.9, nesterov=True)
     clf = CNN.build(width=28, height=28, depth=1, total_classes=10,
-                    Saved_Weights_Path='cnn_weights.hdf5')
+                    Saved_Weights_Path=SAVED_WEIGHTS_PATH)
     clf.compile(loss="categorical_crossentropy", optimizer=sgd, metrics=["accuracy"])
     probs = clf.predict(image)
     prediction = probs.argmax(axis=1)

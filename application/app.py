@@ -1,3 +1,4 @@
+import argparse
 import sys
 import time
 import cv2
@@ -29,7 +30,13 @@ class App(QWidget):
         self.height = WINDOW_HEIGHT
         self.widgets()
         self.mode = SIMPLE_MODE
-        #QFontDatabase.addApplicationFont("../fonts/BubblegumSans-Regular.ttf")
+
+        parser = argparse.ArgumentParser()
+        parser.add_argument('-p', '--path', type=str, default=DEFAULT_PROGRAM_IMGS_PATH,
+                            help='Path to the images for recognition')
+        args = parser.parse_args()
+        self.search_dir = args.path
+        # QFontDatabase.addApplicationFont("../fonts/BubblegumSans-Regular.ttf")
         # Get the labels
         self.labels = open(LABELS_PATH).read().strip().split('\n')
 
@@ -88,8 +95,6 @@ class App(QWidget):
         self.overall_box_pred_correctness = 0
         self.overall_pred_correctness_obj = [0, 0]
         self.overall_pred_correctness_obj_merged = [0, 0]
-        self.cap = None
-        # self.cap = cv2.VideoCapture(0)
 
         self.showed_labels = []
 
@@ -99,11 +104,11 @@ class App(QWidget):
 
         self.show()
 
-    def show_image(self, x, y, width, height, image=None, path=''):
+    def show_image(self, x, y, width, height, image=None, path='', to_save=True):
         label = QLabel(self)
         filename = path
         if len(path) == 0:
-            filename = "../temporary/{}.png".format(os.getpid())
+            filename = "temporary/{}.png".format(os.getpid())
             cv2.imwrite(filename, image)
 
         pixmap = QPixmap(filename)
@@ -111,7 +116,8 @@ class App(QWidget):
         label.move(x, y)
         if len(path) == 0:
             os.remove(filename)
-        self.showed_labels.append(label)
+        if to_save:
+            self.showed_labels.append(label)
         label.show()
 
     def setup_fps_label(self):
@@ -126,9 +132,9 @@ class App(QWidget):
         height = int(WINDOW_HEIGHT / 6)
         i = 0
         while True:
-            filename = "../temporary/{}.png".format(os.getpid())
+            filename = "temporary/{}.png".format(os.getpid())
             cv2.imwrite(filename, corner_image)
-            self.show_image(x, y, width, height, path=filename)
+            self.show_image(x, y, width, height, path=filename, to_save=False)
             os.remove(filename)
 
             i += 1
@@ -151,7 +157,7 @@ class App(QWidget):
 
     def create_next_button(self):
         self.start_button.setGeometry(WINDOW_WIDTH / 2 - 100, WINDOW_HEIGHT - 60, WINDOW_WIDTH / 8,
-                                     WINDOW_HEIGHT / 14)
+                                      WINDOW_HEIGHT / 14)
         self.start_button.setText('Next')
 
     def widgets(self):
@@ -177,7 +183,6 @@ class App(QWidget):
         exitAction.triggered.connect(self.client_exit)
         file.addAction(exitAction)
 
-    @pyqtSlot()
     def turn_on_experimental_mode(self):
         self.mode = EXPERIMENTAL_MODE
         self.clear_labels()
@@ -185,14 +190,12 @@ class App(QWidget):
         self.create_start_button()
         self.set_background()
 
-    @pyqtSlot()
     def turn_on_simple_mode(self):
         self.mode = SIMPLE_MODE
         self.clear_labels()
         self.create_start_button()
         self.set_background()
 
-    @pyqtSlot()
     def turn_on_all_mode(self):
         self.mode = ALL_IN_ONE_MODE
         self.clear_labels()
@@ -225,28 +228,41 @@ class App(QWidget):
             self.go_through_phone_imgs()
         else:
             self.create_filename_list()
-            img_path = self.filenames_list[self.filename_indx]
-            print(img_path)
-            self.clock(name='capture', img_path=img_path)
-            prediction_matrix = self.get_approximate_prediction()
-            results = confirm_results(prediction_matrix)
-            if self.mode == SIMPLE_MODE:
-                self.show_emotion(results)
-            else:
-                self.show_expressions(results, prediction_matrix)
-
-            self.filename_indx += 1
             if len(self.filenames_list) == self.filename_indx:
-                self.filename_indx = 0
+                self.start_button.deleteLater()
+                self.clear_labels()
+                self.show_emotion(confirm_results(self.get_approximate_prediction()), show_text=True)
+            else:
+                img_path = self.filenames_list[self.filename_indx]
+                print(img_path)
+                self.clock(name=DEFAULT_IMG_NAME, img_path=img_path)
+                prediction_matrix = self.get_approximate_prediction()
+                results = confirm_results(prediction_matrix)
+                if self.mode == SIMPLE_MODE:
+                    self.show_emotion(results)
+                else:
+                    self.show_expressions(results, prediction_matrix)
+
+                self.filename_indx += 1
 
     def create_filename_list(self):
         if len(self.filenames_list) == 0:
-            for i in range(0, 13):
-                self.filenames_list.append(PROGRAM_IMGS_PATH + str(i) + JPG)
-            #for filename in os.listdir(PROGRAM_IMGS_PATH):
-            #    pre, ext = os.path.splitext(filename)
-            #    if ext == '.jpg' or ext == '.JPG':
-            #        self.filenames_list.append(PROGRAM_IMGS_PATH + filename)
+            #os.chdir(self.search_dir)
+            for filename in os.listdir(self.search_dir):
+                re, ext = os.path.splitext(filename)
+                if ext == '.jpg' or ext == '.JPG':
+                    self.filenames_list.append(self.search_dir + filename)
+            self.filenames_list.sort(key=lambda x: os.path.getmtime(x))
+        else:
+            self.add_filenames_to_list()
+
+    def add_filenames_to_list(self):
+        for filename in os.listdir(self.search_dir):
+            re, ext = os.path.splitext(filename)
+            path = self.search_dir + filename
+            if not path in self.filenames_list and (ext == '.jpg' or ext == '.JPG'):
+                self.filenames_list.append(path)
+        self.filenames_list.sort(key=lambda x: os.path.getmtime(x))
 
     def get_approximate_prediction(self):
         prediction_matrix = []
@@ -261,14 +277,26 @@ class App(QWidget):
                 prediction_matrix[i].append(el[0])
         return prediction_matrix
 
-    def show_emotion(self, results):
-        emotion = get_emotion(results)
+    def show_final_text(self, success_count, defined_count):
+        text = str(success_count) + ' out of ' + str(defined_count) + ' are correct!'
+        label = QLabel(text, self)
+        label.setStyleSheet("color: #003286;"
+                            "font-family: Tekton Pro;"
+                            "font-size: 30pt")
+        label.move(WINDOW_WIDTH / 3 + 50, WINDOW_HEIGHT / 16 * 15)
+        self.showed_labels.append(label)
+        label.show()
+
+    def show_emotion(self, results, show_text=False):
+        emotion, success_count, defined_count = get_emotion(results)
         if emotion == SMILE:
             img_path = SMILE_PATH
         elif emotion == NEUTRAL:
             img_path = NEUTRAL_PATH
         else:
             img_path = SAD_PATH
+        if show_text:
+            self.show_final_text(success_count, defined_count)
         self.show_image(WINDOW_WIDTH / 4, WINDOW_HEIGHT / 4, WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2, path=img_path)
 
     def go_through_phone_imgs(self):
@@ -366,7 +394,7 @@ class App(QWidget):
             class_id = element[CLASS_ID]
             # draw the bounding box and label on the image
             color = [int(c) for c in self.colors[class_id]]
-            #if self.mode == EXPERIMENTAL_MODE:
+            # if self.mode == EXPERIMENTAL_MODE:
             if are_legitimate[i]:
                 prediction = element[PREDICTION]
             else:
@@ -418,7 +446,7 @@ class App(QWidget):
                 add_to_dictionary(self.pred_matrixes[i][j], matrix[i][j])
         results = confirm_results(matrix)
 
-        if self.mode == EXPERIMENTAL_MODE: #or self.mode == ALL_IN_ONE_MODE:
+        if self.mode == EXPERIMENTAL_MODE:  # or self.mode == ALL_IN_ONE_MODE:
             self.show_expressions(results, matrix)
         return results, boxes_classids_pred
 
@@ -433,7 +461,7 @@ class App(QWidget):
         outputs = self.net.forward(self.layer_names)
 
         # Extract bounding boxes, confidences and classIDs
-        boxes, confidences, classIDs = extract_boxes_confidences_classids(outputs, CONFIDENCE, width, height)
+        boxes, confidences, classIDs = extract_boxes_confidences_classids(outputs, width, height)
 
         # Apply Non-Max Suppression
         idxs = cv2.dnn.NMSBoxes(boxes, confidences, CONFIDENCE, THRESHOLD)
@@ -444,6 +472,7 @@ class App(QWidget):
         results, boxes_classids_pred = self.add_prediction_matrix(boxes, predictions, classIDs, are_legitimate,
                                                                   filename[:-2])
         return boxes_classids_pred, confidences, are_legitimate, results
+
     """
     def paintEvent(self, e):
         painter = QPainter(self)
@@ -460,7 +489,7 @@ class App(QWidget):
 
     def show_expressions(self, results, matrix):
         self.clear_labels()
-        #self.draw_board()
+        # self.draw_board()
         column_number = int(len(matrix[0]) / 3)
         rows_number = len(matrix)
         xs, ys = [100] * column_number * 3, [50] * rows_number
@@ -545,15 +574,14 @@ class App(QWidget):
             self.fps_label.setText("FPS: " + str(fps))
             self.fps_label.show()
 
-        #if self.mode == EXPERIMENTAL_MODE:
+        # if self.mode == EXPERIMENTAL_MODE:
         #    self.show_image(image=image)
         #    QGuiApplication.processEvents()
-
 
         # self.var.set("FPS: " + str(fps))
 
 
-if __name__ == '__main__':
+def application():
     app = QApplication(sys.argv)
     ex = App()
     sys.exit(app.exec_())
