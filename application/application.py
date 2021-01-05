@@ -141,8 +141,8 @@ class Application(QWidget):
         corner_image = cv2.imread(CORNER_IMAGE_PATH, cv2.IMREAD_UNCHANGED)
         x = 0
         y = 0
-        width = int(WINDOW_WIDTH / 6)
-        height = int(WINDOW_HEIGHT / 6)
+        width = int(WINDOW_WIDTH / 4)
+        height = int(WINDOW_HEIGHT / 4)
         i = 0
         while True:
             filename = "temporary/{}.png".format(os.getpid())
@@ -215,6 +215,7 @@ class Application(QWidget):
         self.clear_labels()
         self.create_start_button()
         self.set_background()
+        self.title = 'Evaluation mode'
 
     def turn_on_simple_mode(self):
         """
@@ -225,6 +226,7 @@ class Application(QWidget):
         self.clear_labels()
         self.create_start_button()
         self.set_background()
+        self.title = 'Simple mode'
 
     def turn_on_detailed_mode(self):
         """
@@ -235,6 +237,7 @@ class Application(QWidget):
         self.clear_labels()
         self.create_start_button()
         self.set_background()
+        self.title = 'Detailed mode'
 
     def set_background(self):
         """
@@ -244,10 +247,10 @@ class Application(QWidget):
         if self.mode == EVALUATIONAL_MODE:
             self.setStyleSheet("background-color: teal;")
         elif self.mode == SIMPLE_MODE:
-            self.setStyleSheet("background-color: pink;")
+            self.setStyleSheet("background-color: white;")
             self.setup_corner_images()
         elif self.mode == DETAILED_MODE:
-            self.setStyleSheet("background-color: white;")
+            self.setStyleSheet("background-color: pink;")
             self.setup_corner_images()
         self.show()
         QGuiApplication.processEvents()
@@ -264,6 +267,7 @@ class Application(QWidget):
             self.start_button.deleteLater()
             self.clear_labels()
             self.show_emotion(confirm_results(self.get_merged_predictions()), show_text=True)
+            self.title = 'Results'
         else:
             img_path = self.filenames_list[self.filename_indx]
             self.process_one_image(name=DEFAULT_IMG_NAME, img_path=img_path)
