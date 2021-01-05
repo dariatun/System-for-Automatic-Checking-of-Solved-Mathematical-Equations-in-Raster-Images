@@ -134,9 +134,6 @@ def prepare_handwritten_image(image):
     return result
 
 
-
-
-
 def cut_image(x, y, width, height, image):
     """ Cut the image by the border coordinates
 
@@ -178,6 +175,23 @@ def preprocess_equation_image(image):
     result = cv2.morphologyEx(result, cv2.MORPH_OPEN, kernel)
 
     return result
+
+
+def draw_rectangle(image, x, y, w, h, colour, label, prediction):
+    """
+    Displays rectangle in the image
+    """
+    cv2.rectangle(image, (x, y), (x + w, y + h), colour, 2)
+    text = "{} ({})".format(label, prediction)
+    put_text(image, text, colour, x, y - 5, font_scale=0.9)
+
+
+def put_text(image, text, colour, x, y, font_scale):
+    """
+    Puts text on the image
+    """
+    cv2.putText(image, text, (x, y), cv2.FONT_HERSHEY_SIMPLEX, fontScale=font_scale, color=colour, thickness=2)
+
 
 
 

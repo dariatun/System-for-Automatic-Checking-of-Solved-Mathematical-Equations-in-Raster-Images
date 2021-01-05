@@ -1,27 +1,41 @@
 import argparse
 import os
 import sys
-import time
 import cv2
 import numpy as np
 
+from application.answer_correctness_checker import confirm_results, get_emotion, get_text_from_result
 from application.changeables import BOOL_SHOW, BOOL_SAVE
 from application.constants import WINDOW_WIDTH, WINDOW_HEIGHT, DETAILED_MODE, EVALUATIONAL_MODE, LABELS_PATH, \
     CONFIG_PATH, WEIGHTS_PATH, DEFAULT_PROGRAM_IMGS_PATH, CORNER_IMAGE_PATH, SIMPLE_MODE, DEFAULT_IMG_NAME, \
     FINAL_TEXT_LBL, SMILE, SMILE_PATH, NEUTRAL_PATH, NEUTRAL, SAD_PATH, OUTPUT_PATH, TXT, NUMBER_OF_IMAGES, \
     NUMBER_IMAGES_PODTYPES, NUMBER_OF_IMAGE_TYPES, HANDWRITTEN, EQUATIONS, DEBUG_FILENAME, DEBUG_ONE_FILE, JPG, BOX, \
-    CLASS_ID, PREDICTION, CONFIDENCE, THRESHOLD, EXPRESSIONS_LBL, TEXT_RESULTS_LBL, TEST_DATA_PATH
-from application.functions import print_prediction_percent, divide_by_lines, sort_by_x_coordinate, sort_by_y_coordinate, \
-    create_matrix_from_lines, print_overall_prediction_correctness, confirm_results, get_emotion, \
-    remove_similar_elements, extract_boxes_confidences_classids, print_merged_answer, get_text_from_result, \
-    run_object_detection
-from application.image_manipulation import rotate_image
+    CLASS_ID, PREDICTION, EXPRESSIONS_LBL, TEXT_RESULTS_LBL, TEST_DATA_PATH
+from application.object_localisation import extract_boxes_confidences_classids, run_nms_algorithm
+from application.image_manipulation import rotate_image, draw_rectangle, put_text
+from application.logger import print_overall_prediction_correctness, print_prediction_percent, print_merged_answer
+from application.object_detection import run_object_detection
+from application.prediction_matrix_creation import create_matrix_from_lines, sort_by_y_coordinate, sort_by_x_coordinate, \
+    divide_by_lines
 from application.scaner import scan
 from application.evaluation_mode import compare_predictions, compare_box_predictions
 from application.utils import add_to_dictionary, get_element_with_the_biggest_value
 from PyQt5.QtCore import pyqtSlot
 from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QPushButton, QMenuBar, QAction
 from PyQt5.QtGui import QPixmap, QGuiApplication, QFont
+
+
+def get_application_arguments():
+    """
+    Process the arguments of the application
+    :return: application's arguments as a variable
+    """
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-p', '--path', type=str, default=DEFAULT_PROGRAM_IMGS_PATH,
+                        help='Path to the images for recognition')
+    parser.add_argument('-e', '--evaluation', action='store_true', default=False,
+                        help='The program will start evaluation')
+    return parser.parse_args()
 
 
 class Application(QWidget):
@@ -36,7 +50,7 @@ class Application(QWidget):
         self.widgets()
         self.mode = DETAILED_MODE
 
-        args = self.get_application_arguments()
+        args = get_application_arguments()
 
         self.search_dir = args.path
         if args.evaluation:
@@ -47,12 +61,6 @@ class Application(QWidget):
         self.net = cv2.dnn.readNetFromDarknet(CONFIG_PATH, WEIGHTS_PATH)
         self.layer_names = self.net.getLayerNames()
         self.layer_names = [self.layer_names[i[0] - 1] for i in self.net.getUnconnectedOutLayers()]
-
-        self.font = cv2.FONT_HERSHEY_PLAIN
-        self.starting_time = time.time()
-        self.frame_id = 0
-
-        self.fps_label = None
 
         self.start_button = QPushButton("START", self)
         self.start_button.setFont(QFont("Tekton Pro", 50))
@@ -91,21 +99,12 @@ class Application(QWidget):
 
         self.filenames_list = []
         self.filename_indx = 0
+
         self.set_background()
-
-        self.show()
-
-    def get_application_arguments(self):
-        """
-        Process the arguments of the application
-        :return: application's arguments as a variable
-        """
-        parser = argparse.ArgumentParser()
-        parser.add_argument('-p', '--path', type=str, default=DEFAULT_PROGRAM_IMGS_PATH,
-                            help='Path to the images for recognition')
-        parser.add_argument('-e', '--evaluation', type=bool, default=False,
-                            help='The program will start evaluation')
-        return parser.parse_args()
+        if self.mode == EVALUATIONAL_MODE:
+            self.run_evaluation()
+        else:
+            self.show()
 
     def show_image(self, x, y, width, height, image=None, path='', to_save=True):
         """
@@ -133,14 +132,6 @@ class Application(QWidget):
         if to_save:
             self.showed_labels.append(label)
         label.show()
-
-    def setup_fps_label(self):
-        """
-        Shows FPS label in EVALUATION mode
-        :return:
-        """
-        self.fps_label = QLabel('FPS: ---------------------------', self)
-        self.fps_label.move(0, 0)
 
     def setup_corner_images(self):
         """
@@ -179,7 +170,6 @@ class Application(QWidget):
         self.start_button.setGeometry(WINDOW_WIDTH / 2 - 100, WINDOW_HEIGHT / 2 - 50, WINDOW_WIDTH / 6,
                                       WINDOW_HEIGHT / 8)
         self.start_button.setText('START')
-        self.start_button.show()
 
     def create_next_button(self):
         """
@@ -223,7 +213,6 @@ class Application(QWidget):
         """
         self.mode = EVALUATIONAL_MODE
         self.clear_labels()
-        self.setup_fps_label()
         self.create_start_button()
         self.set_background()
 
@@ -277,7 +266,6 @@ class Application(QWidget):
             self.show_emotion(confirm_results(self.get_merged_predictions()), show_text=True)
         else:
             img_path = self.filenames_list[self.filename_indx]
-            print(img_path)
             self.process_one_image(name=DEFAULT_IMG_NAME, img_path=img_path)
             prediction_matrix = self.get_merged_predictions()
             results = confirm_results(prediction_matrix)
@@ -445,20 +433,6 @@ class Application(QWidget):
         self.close_evaluation_files()
         self.print_evaluation_results()
 
-    def draw_rectangle(self, image, x, y, w, h, colour, class_id, prediction):
-        """
-        Displays rectangle in the image
-        """
-        cv2.rectangle(image, (x, y), (x + w, y + h), colour, 2)
-        text = "{} ({})".format(self.labels[class_id], prediction)
-        self.put_text(image, text, colour, x, y - 5, font_scale=0.9)
-
-    def put_text(self, image, text, colour, x, y, font_scale):
-        """
-        Puts text on the image
-        """
-        cv2.putText(image, text, (x, y), cv2.FONT_HERSHEY_SIMPLEX, fontScale=font_scale, color=colour, thickness=2)
-
     def draw_bounding_boxes(self, image, boxes_classids_pred, are_legitimate, results):
         results_colour = [int(c) for c in self.colors[2]]
         results_indx = 0
@@ -473,9 +447,9 @@ class Application(QWidget):
                 prediction = element[PREDICTION]
             else:
                 prediction = ''
-            self.draw_rectangle(image, x, y, w, h, color, class_id, prediction)
+            draw_rectangle(image, x, y, w, h, color, self.labels[class_id], prediction)
             if class_id == EQUATIONS and results_indx > len(results) > 0:
-                self.put_text(image, get_text_from_result(results[results_indx]), results_colour, x - 20, y + 50, 1.5)
+                put_text(image, get_text_from_result(results[results_indx]), results_colour, x - 20, y + 50, 1.5)
                 results_indx += 1
 
         return image
@@ -532,18 +506,6 @@ class Application(QWidget):
 
         return results, boxes_classids_pred
 
-    def run_nms_algorithm(self, boxes, confidences, class_ids):
-        """
-        The NMS algorithm
-        :param boxes: the list of bounding boxes
-        :param confidences: the list of prediction confidences
-        :param class_ids: the list of class ids
-        :return: updated lists of bounding boxes, prediction confidences, class ids
-        """
-        indexes = cv2.dnn.NMSBoxes(boxes, confidences, CONFIDENCE, THRESHOLD)
-
-        return remove_similar_elements(boxes, class_ids, indexes)
-
     def run_object_localisation(self, image):
         """
         Localise the objects
@@ -570,7 +532,7 @@ class Application(QWidget):
             image = cv2.merge((image, image, image))
 
         boxes, confidences, classIDs = self.run_object_localisation(image)
-        boxes, classIDs = self.run_nms_algorithm(boxes, confidences, classIDs)
+        boxes, classIDs = run_nms_algorithm(boxes, confidences, classIDs)
 
         predictions, are_legitimate = run_object_detection(image, boxes, classIDs)
         if self.mode == EVALUATIONAL_MODE:
@@ -687,8 +649,8 @@ class Application(QWidget):
         :param img_path: the path to the image  for recognition
         :return:
         """
-        self.frame_id += 1
-        print(name)
+        if self.mode == EVALUATIONAL_MODE:
+            print(name)
 
         if image is None:
             image = scan(to_crop=False, file_name=img_path)
@@ -709,13 +671,6 @@ class Application(QWidget):
 
         if BOOL_SAVE:
             cv2.imwrite(OUTPUT_PATH + name + '.jpg', image)
-
-        if self.mode == EVALUATIONAL_MODE:
-            elapsed_time = time.time() - self.starting_time
-            fps = self.frame_id / elapsed_time
-
-            self.fps_label.setText("FPS: " + str(fps))
-            self.fps_label.show()
 
 
 def application():

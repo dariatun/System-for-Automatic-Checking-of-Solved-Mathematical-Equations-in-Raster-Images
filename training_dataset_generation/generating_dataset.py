@@ -1,4 +1,5 @@
 import cv2
+import sys
 from PIL import ImageFont, ImageDraw
 import loremipsum as li
 from PIL.Image import Image
@@ -13,6 +14,8 @@ matplotlib.use('Agg')
 
 LINUX = False
 INPUTS_FROM_STDIN = False
+
+sys.path.append(MNIST_PATH)
 
 from MNIST_Dataset_Loader.mnist_loader import MNIST
 
@@ -125,7 +128,7 @@ def get_equation(x, y, font, border, draw):
     :return: equation string, last y coordinate of the equation, borders of the equations
     """
     s = generate_number()
-    symbol = symbols[rd.randint(0, 1)]
+    symbol = SYMBOLS[rd.randint(0, 1)]
     equation = s + ' ' + symbol + ' '
     s = generate_number_in_range(0, int(s) if symbol == '-' else 99 - int(s))
     equation += s + ' ='

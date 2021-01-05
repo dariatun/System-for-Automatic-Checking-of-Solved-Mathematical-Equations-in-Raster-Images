@@ -1,20 +1,6 @@
 import re
 
 
-def get_xy_wh(coordinates, size):
-    """ Recalculate x, y coordinates
-
-    :param coordinates: coordinates of center of the image
-    :param size: size of a full image
-    :return: recalculated coordinates
-    """
-    width = int(coordinates['width'] * size[1])
-    height = int(coordinates['height'] * size[0])
-    x = int(coordinates['center_x'] * size[1] - width / 2)
-    y = int(coordinates['center_y'] * size[0] - height / 2)
-    return (x, y), width, height
-
-
 def add_to_dictionary(dictionary, el):
     """
     Adds element to the dictionary

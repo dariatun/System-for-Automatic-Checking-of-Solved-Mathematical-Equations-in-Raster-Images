@@ -1,8 +1,8 @@
 import sys
 import numpy as np
-# path to the directory with the DataAugmentationForObjectDetection
-sys.path.append('../DataAugmentationForObjectDetection')
-# sys.path.append('/home.stud/tunindar/DataAugmentationForObjectDetection')
+from training_dataset_generation.constants import DATA_AUGMENTATION_PATH
+
+sys.path.append(DATA_AUGMENTATION_PATH)
 
 from data_aug.data_aug import *
 from data_aug.bbox_util import *

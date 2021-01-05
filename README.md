@@ -1,47 +1,107 @@
-# Recognition of mathematical expressions using neural networks
-yolo/ folder:\
+# System for Automatic Checking of Solved Mathematical Equations in Raster Images
+
+## Instalation
+```bash
+pip install -r requirements.txt
+```
+For this project https://github.com/anujdutt9/Handwritten-Digit-Recognition-using-Deep-Learning.git 
+is needed. The path to the directory should be added to training_dataset_generation.constants file and
+application.changeables.\
+
+For the training dataset generation is also needed
+https://github.com/Paperspace/DataAugmentationForObjectDetection.git.
+The path to it should be added to training_dataset_generation.constants file.
+
+## Usage
+To start the training dataset generation:
+```bash
+python3 start_generating_dataset.py
+```
+
+To start the application:
+```bash
+python3 start_application.py
+```
+
+It also can be started with argument -p < path >, where path is 
+a path with the images that are desired to process.
+
+### Example:
+```bash
+python3 start_application.py -p 'images/program_images'
+```
+Argument -e is used for starting an evaluation. It will take 
+images from evaluation_data/test_images folder and their annotations from
+evaluation_data/test_annotations.
+
+### Example:
+```bash
+python3 start_application.py -e
+```
+
+## File management description
+
+1. model/ \
 |_ obj.data\
 |_ obj.names\
 |_ yolov3-obj.cfg\
-|_ yolov3-obj_best.weights\
+|_ yolov3-obj_best.weights
 
-implementation/ folder:\
+
+2. training_dataset_generation/ \
 |__ generating_dataset.py\
 |__ divide_to_train_and_test.py\
-|__ handwritten_recogniser.py\
+|__ data_augmentation.py\
 |__ utils.py\
-|__ bg_images/\
-|__ cnn_weights.hdf5\
-|__ fonts/\
+|__ constants.py
+   
 
-1. Generating dataset\
-    For the dataset generation some libraries and github directories should be installed:
-    * https://github.com/Paperspace/DataAugmentationForObjectDetection.git - the path to the directory should be written on the 13 line in utils.py file.
-    * PIL (Python Image Library)
-    * NumPy
-    * cv2
-    * loremipsum
-    * matplotlib
-    * sys
-    * https://github.com/anujdutt9/Handwritten-Digit-Recognition-using-Deep-Learning.git - the path to the directory should be written on the 15 line in generating_dataset.py file.
-    
-    The generation can be started with the command: python generating_dataset.py
-    
-2. Divide to train and test dataset\
-    Starts with the command: python divide_to_train_and_test.py
-    
-3. Handwritten digits recogniser\
-    For this te following libraries and github directories should be installed:
-    * json
-    * sys
-    * NumPy
-    * PIL
-    * matplotlib
-    * keras
-    * https://github.com/anujdutt9/Handwritten-Digit-Recognition-using-Deep-Learning.git - the path to the directory should be written on the 10 line in handwritten_recogniser.py file.
-    
-    Starts with the command: python handwritten_recogniser.py
+3. cnn_weights.hdf5
 
-4. YOLO test\
-    Install YOLO.
-    Command to test: ./darknet detector test obj.data yolov3-obj.cfg yolov3-obj_best.weights
+
+4. application/ \
+|__ answer_correctness_checker.py\
+|__ application.py\
+|__ changeables.py\
+|__ constants.py\
+|__ detect_equation.py\
+|__ detect_handwritten_digit.py\
+|__ evaluation_mode.py\
+|__ image_manipulation.py\
+|__ logger.py\
+|__ object_detection.py\
+|__ object_localisation.py\
+|__ prediction_matrix_creation.py\
+|__ scanner.py\
+|__ utils.py
+
+
+5. fonts/ 
+
+
+6. images/ \
+   |__ background/ \
+   |__ corner/ \
+   |__ emotions/ \
+   |__ program_images/ 
+   
+
+7. requirements.txt
+   
+
+8. output/ 
+
+
+9. temporary/ 
+
+
+10. evaluation_data/ \
+   |__ test_images/ \
+   |__ test_annotations/ 
+    
+
+11. start_application.py
+
+
+12. start_generating_dataset.py
+    nd to test: ./darknet detector test obj.data yolov3-obj.cfg yolov3-obj_best.weights

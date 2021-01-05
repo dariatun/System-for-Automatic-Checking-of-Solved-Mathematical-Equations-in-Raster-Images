@@ -15,12 +15,10 @@ H = 3
 
 DEFAULT_SYMBOL_WIDTH = 160
 
-TEST_DATA_ANNOTATIONS_PATH = 'testing_data/test_data_annotations/'
-TEST_DATA_BOX_ANNOTATIONS_PATH = 'testing_data/test_data_annotations/000/'
-TEST_DATA_PATH = 'testing_data/test_data/'
+TEST_DATA_ANNOTATIONS_PATH = 'evaluation_data/test_annotations/'
+TEST_DATA_BOX_ANNOTATIONS_PATH = 'evaluation_data/test_annotations/000/'
+TEST_DATA_PATH = 'evaluation_data/test_images/'
 
-GENERATED_TEST_PATH = 'testing_data/generated_test_data/'
-GENERATED_TEST_ANNOTATION_PATH = 'testing_data/generated_test_data_annotation/'
 
 OUTPUT_PATH = 'output/'
 

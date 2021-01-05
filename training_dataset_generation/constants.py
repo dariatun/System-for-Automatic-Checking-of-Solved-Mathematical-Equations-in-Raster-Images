@@ -1,8 +1,11 @@
 MNIST_PATH = '../Handwritten-Digit-Recognition-using-Deep-Learning/CNN_Keras/MNIST_Dataset_Loader/'
-BACKRGROUND_IMAGES_PATH = 'images/background/'
+BACKGROUND_IMAGES_PATH = 'images/background/'
 
-SAVE_PATH = 'testing_data/generated_test_data/'
-SAVE_PATH_ANNOTATION = 'testing_data/generated_test_data_annotation/'
+# path to the directory with the DataAugmentationForObjectDetection
+DATA_AUGMENTATION_PATH = '../DataAugmentationForObjectDetection'
+
+SAVE_PATH = 'evaluation_data/generated_test_data/'
+SAVE_PATH_ANNOTATION = 'evaluation_data/generated_test_data_annotation/'
 SYMBOLS = ['+', '-']
 
 FONTS = ["fonts/times-new-roman.ttf", "fonts/arial.ttf"]
