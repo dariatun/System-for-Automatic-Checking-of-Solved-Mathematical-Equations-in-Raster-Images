@@ -1,22 +1,8 @@
 import cv2
+import imutils
 import numpy as np
 import math
 from scipy import ndimage
-
-from application.handwritten_recogniser import detect_handwritten_digit
-from application.recognise_text import recognise_text
-from application.utils import cut_image
-
-DEBUG = False
-DEBUG_TEXT = False
-INCREASE_BORDER_VALUE = 12
-
-INCREASE_HANDWRITTEN_BORDER_VALUE = 20
-MAX_ACCEPTABLE_BLACK_PIXEL_COUNT = 6
-MAX_BLACK_VALUE = 120
-MIN_WHITE_VALUE = 20
-
-DIGIT_IMAGE_SIZE = 28
 
 
 def get_best_shift(img):
@@ -112,9 +98,7 @@ def preprocessing_handwritten_image(image):
     """
     # rescale it
     grey = cv2.resize(255 - image, (28, 28))
-    if DEBUG and grey.size != 0:
-        cv2.imshow("FULL IMAGE", grey)
-        cv2.waitKey(0)
+
     # better black and white version
     (thresh, grey) = cv2.threshold(grey, 128, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
     grey = cv2.GaussianBlur(grey, (3, 3), 3)
@@ -132,9 +116,7 @@ def preprocessing_handwritten_image(image):
     shiftx, shifty = get_best_shift(grey)
     shifted = shift(grey, shiftx, shifty)
     grey = shifted
-    if DEBUG and grey.size != 0:
-        cv2.imshow("FULL IMAGE changed", grey)
-        cv2.waitKey(0)
+
     return grey
 
 
@@ -144,158 +126,59 @@ def prepare_handwritten_image(image):
     :param image: initial image
     :return: changed image
     """
-
     resized_image = cv2.resize(image, (28, 28))
 
-    if DEBUG and resized_image.size != 0:
-        cv2.imshow("original", resized_image)
-        cv2.waitKey(0)
-
     ret, thresh = cv2.threshold(resized_image, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
-
-    if DEBUG and thresh.size != 0:
-        cv2.imshow("FULL IMAGE", thresh)
-        cv2.waitKey(0)
-
-    blured = cv2.GaussianBlur(thresh, (5, 5), 5)
-
-    if DEBUG and blured.size != 0:
-        cv2.imshow("Blured", blured)
-        cv2.waitKey(0)
-
-    result = blured
-    if DEBUG and result.size != 0:
-        cv2.imshow("FULL IMAGE changed", result)
-        cv2.waitKey(0)
+    result = cv2.GaussianBlur(thresh, (5, 5), 5)
 
     return result
 
 
-def count_white_pixels_around(image):
+
+
+
+def cut_image(x, y, width, height, image):
+    """ Cut the image by the border coordinates
+
+    :param x: x coordinate of the border's left side
+    :param y: y coordinate of the border's top side
+    :param width: the width of the border
+    :param height: the height of the border
+    :param image: the image to cut digit from
+    :return: image of a digit
     """
-    Calculates the number of white pixels around the bounding box
-    :param image: the digit image
-    :return: the number of the white pixels to the left,
-             to the right, above and below the bounding box
+    return image[y:y+height, x:width+x]
+
+
+def rotate_image(image, angle):
     """
-    left_white, right_white, up_white, down_white = 0, 0, 0, 0
-    for i in range(0, 28):
-        if image[0][i] > MIN_WHITE_VALUE:
-            up_white += 1
-        if image[28 - 1][i] > MIN_WHITE_VALUE:
-            down_white += 1
-    for i in range(0, 28):
-        if image[i][0] > MIN_WHITE_VALUE:
-            left_white += 1
-        if image[i][28 - 1] > MIN_WHITE_VALUE:
-            right_white += 1
-    if DEBUG or DEBUG_TEXT:
-        print(left_white, right_white, up_white, down_white)
-    return left_white, right_white, up_white, down_white
-
-
-def get_new_coordinates(left_white, right_white, up_white, down_white, x, y, w, h, image):
+    Rotates the image on the angle
+    :param image: the image to rotate
+    :param angle: the angle to ratate on
+    :return: the rotated image
     """
-    Extends the bounding box if needed
-    :param left_white: the number of the white pixels to the left of the bounding box
-    :param right_white: the number of the white pixels to the right of the bounding box
-    :param up_white: the number of the white pixels above the bounding box
-    :param down_white: the number of the white pixels below the bounding box
-    :param x: the x-coordinate of the bounding box
-    :param y: the y-coordinate of the bounding box
-    :param w: the width of the bounding box
-    :param h: the height of the bounding box
-    :param image: the image where the object is at
-    :return: new bounding box coordinates
+    return imutils.rotate(image, angle)
+
+
+def preprocess_equation_image(image):
     """
-    new_x, new_y, new_w, new_h = x, y, w, h
-    if left_white > MAX_ACCEPTABLE_BLACK_PIXEL_COUNT:
-        new_x = x - INCREASE_HANDWRITTEN_BORDER_VALUE
-        if new_x < 0:
-            new_x = 0
-    if right_white > MAX_ACCEPTABLE_BLACK_PIXEL_COUNT:
-        test_w = new_w + INCREASE_HANDWRITTEN_BORDER_VALUE
-        if test_w > image.shape[0]:
-            new_w = image.shape[0]
-        else:
-            new_w = test_w
-    if up_white > MAX_ACCEPTABLE_BLACK_PIXEL_COUNT:
-        new_y = y - INCREASE_HANDWRITTEN_BORDER_VALUE
-        if new_y < 0:
-            new_y = 0
-        new_h += y - new_y
-    if down_white > MAX_ACCEPTABLE_BLACK_PIXEL_COUNT:
-        test_h = new_h + INCREASE_HANDWRITTEN_BORDER_VALUE
-        if test_h > image.shape[1]:
-            new_h = image.shape[1]
-        else:
-            new_h = test_h
-    return new_x, new_y, new_w, new_h
-
-
-def resize_image_if_needed(x, y, w, h, image, loop_number):
+    Preprocesses image before detection
+    :param image: the image to change
+    :return: changed image
     """
-    If there are white pixels around the digit image, will extend the bounding box to include them
-    :param x: the x-coordinate of the bounding box
-    :param y: the y-coordinate of the bounding box
-    :param w: the width of the bounding box
-    :param h: the height of the bounding box
-    :param image: the image where the object is at
-    :param loop_number: the times the bounding box was extended
-    :return: image of the digit and its bounding box
-    """
-    digit_image = cut_image(x, y, w, h, image)
+    ret, thresh = cv2.threshold(image, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    blured = cv2.GaussianBlur(thresh, (7, 7), 9)
 
-    changed_digit_image = prepare_handwritten_image(digit_image)
+    result = cv2.medianBlur(blured, 5)
 
-    if DEBUG and changed_digit_image.size != 0:
-        cv2.imshow("Handwritten", changed_digit_image)
-        cv2.waitKey(0)
+    kernel = np.ones((5, 5), np.uint8)
 
-    if loop_number > 4:
-        return digit_image, [x, y, w, h]
+    erode = cv2.erode(result, kernel, iterations=5)
+    result = cv2.bitwise_or(result, erode)
+    result = cv2.morphologyEx(result, cv2.MORPH_OPEN, kernel)
 
-    left_white, right_white, up_white, down_white = count_white_pixels_around(changed_digit_image)
-
-    new_x, new_y, new_w, new_h = get_new_coordinates(left_white, right_white, up_white, down_white, x, y, w, h, image)
-
-    if x != new_x or y != new_y or w != new_w or h != new_h:
-        return resize_image_if_needed(new_x, new_y, new_w, new_h, image, loop_number + 1)
-
-    return digit_image, [x, y, w, h]
+    return result
 
 
-def detect_an_object(image, x, y, w, h, class_id):
-    """
-    Detects the objects in the image that is cut by the bounding box
-    :param image: the image to detect objects on
-    :param x: the x-coordinate of the bounding box
-    :param y: the y-coordinate of the bounding box
-    :param w: the width of the bounding box
-    :param h: the height of the bounding box
-    :param class_id: the class id of the object to detect
-    :return: prediction of the object, new bounding box, the legitimacy of the object
-    """
-    image = rbg_image_to_grey(image)
-    if x < 0: x = 0
-    if y < 0: y = 0
-    box = [x, y, w, h]
-    is_legitimate = True
-    if image.size == 0:
-        print('Leaving detect_an_object, size of image is 0.')
-        return "", box
-    if class_id == 0:
-        prediction, box, is_legitimate = recognise_text(image, x, y, w, h, loop_number=0)
-    else:
-        digit_image, box = resize_image_if_needed(x, y, w, h, image, 0)
-        digit_image = preprocessing_handwritten_image(digit_image)
-        _, prediction = detect_handwritten_digit(digit_image)
-        prediction = str(prediction[0])
-        if DEBUG or DEBUG_TEXT:
-            print(prediction)
-        if (DEBUG or DEBUG_TEXT) and digit_image.size != 0:
-            cv2.imshow("Handwritten", digit_image)
-            cv2.waitKey(0)
-    return prediction, box, is_legitimate
 
 

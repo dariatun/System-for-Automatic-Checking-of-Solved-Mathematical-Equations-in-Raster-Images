@@ -15,9 +15,10 @@ from application.functions import print_prediction_percent, divide_by_lines, sor
     create_matrix_from_lines, print_overall_prediction_correctness, confirm_results, get_emotion, \
     remove_similar_elements, extract_boxes_confidences_classids, print_merged_answer, get_text_from_result, \
     run_object_detection
+from application.image_manipulation import rotate_image
 from application.scaner import scan
 from application.evaluation_mode import compare_predictions, compare_box_predictions
-from application.utils import add_to_dictionary, get_element_with_the_biggest_value, rotate_img_opencv
+from application.utils import add_to_dictionary, get_element_with_the_biggest_value
 from PyQt5.QtCore import pyqtSlot
 from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QPushButton, QMenuBar, QAction
 from PyQt5.QtGui import QPixmap, QGuiApplication, QFont
@@ -423,6 +424,9 @@ class Application(QWidget):
         print_merged_answer(str(i) + '_' + str(j), prediction_matrix)
 
     def run_evaluation(self):
+        """
+        The run of the evaluation
+        """
         self.open_evaluation_files()
 
         if DEBUG_ONE_FILE:
@@ -442,11 +446,17 @@ class Application(QWidget):
         self.print_evaluation_results()
 
     def draw_rectangle(self, image, x, y, w, h, colour, class_id, prediction):
+        """
+        Displays rectangle in the image
+        """
         cv2.rectangle(image, (x, y), (x + w, y + h), colour, 2)
         text = "{} ({})".format(self.labels[class_id], prediction)
         self.put_text(image, text, colour, x, y - 5, font_scale=0.9)
 
     def put_text(self, image, text, colour, x, y, font_scale):
+        """
+        Puts text on the image
+        """
         cv2.putText(image, text, (x, y), cv2.FONT_HERSHEY_SIMPLEX, fontScale=font_scale, color=colour, thickness=2)
 
     def draw_bounding_boxes(self, image, boxes_classids_pred, are_legitimate, results):
@@ -490,6 +500,16 @@ class Application(QWidget):
                                                                                    'handwritten')
 
     def add_prediction_matrix(self, boxes, predictions, class_ids, are_legitimate, name):
+        """
+        Creates matrix out of predicted objects
+        similar to the way the objects are located in the image
+        :param boxes: the list of bounding boxes
+        :param predictions: the list of text predictions
+        :param class_ids: the list of class ids
+        :param are_legitimate: the list of legitimate equations
+        :param name: the name of the image
+        :return: the list of results for each equation, bounding boxes, class ids, text predictions
+        """
         lines = divide_by_lines(boxes, predictions, class_ids, are_legitimate)
         lines = sort_by_x_coordinate(lines)
         lines = sort_by_y_coordinate(lines)
@@ -513,11 +533,23 @@ class Application(QWidget):
         return results, boxes_classids_pred
 
     def run_nms_algorithm(self, boxes, confidences, class_ids):
+        """
+        The NMS algorithm
+        :param boxes: the list of bounding boxes
+        :param confidences: the list of prediction confidences
+        :param class_ids: the list of class ids
+        :return: updated lists of bounding boxes, prediction confidences, class ids
+        """
         indexes = cv2.dnn.NMSBoxes(boxes, confidences, CONFIDENCE, THRESHOLD)
 
         return remove_similar_elements(boxes, class_ids, indexes)
 
     def run_object_localisation(self, image):
+        """
+        Localise the objects
+        :param image: the image for the localisation
+        :return: predicted bounding boxes, class ids and confidence of the prediction for each object
+        """
         height, width = image.shape[:2]
 
         blob = cv2.dnn.blobFromImage(image, 1 / 255.0, (416, 416), swapRB=True, crop=False)
@@ -526,7 +558,13 @@ class Application(QWidget):
         return extract_boxes_confidences_classids(outputs, width, height)
 
     def make_prediction(self, image, filename):
-
+        """
+        Recognises objects in the image
+        :param image: the image for recognition
+        :param filename: the name of the image
+        :return: the list of predicted bounding boxes,
+         class ids, text predictions, correctness of the solved equations
+        """
         # in case image has only one channel
         if image.shape[2] == 1:
             image = cv2.merge((image, image, image))
@@ -535,16 +573,30 @@ class Application(QWidget):
         boxes, classIDs = self.run_nms_algorithm(boxes, confidences, classIDs)
 
         predictions, are_legitimate = run_object_detection(image, boxes, classIDs)
+        if self.mode == EVALUATIONAL_MODE:
+            filename = filename[:-2]
         results, boxes_classids_pred = self.add_prediction_matrix(boxes, predictions, classIDs, are_legitimate,
-                                                                  filename[:-2])
+                                                                  filename)
         return boxes_classids_pred, are_legitimate, results
 
     def clear_labels(self):
+        """
+        Removes labels from the aplication window
+        :return:
+        """
         for label in self.showed_labels:
             label.clear()
         self.showed_labels = []
 
     def create_text_label(self, text, label_type, x, y):
+        """
+        Displays a text label
+        :param text: the text to display
+        :param label_type: the type of the label
+        :param x: the x-coordinate of the label
+        :param y: the y-coordinate of the label
+        :return:
+        """
         label = QLabel(text, self)
         if label_type == EXPRESSIONS_LBL or label_type == FINAL_TEXT_LBL:
             label.setStyleSheet("color: #003286;"
@@ -559,6 +611,12 @@ class Application(QWidget):
         label.show()
 
     def get_text_labels_positions(self, column_number, rows_number):
+        """
+        Gets the position of expressions in the application window
+        :param column_number: the number of expressions columns
+        :param rows_number: the number of expressions rows
+        :return: the list with x and y coordinates
+        """
         xs, ys = [100] * column_number * 3, [50] * rows_number
         column_size = int(WINDOW_WIDTH / column_number) - 10
         small_column_size = int(column_size / 3) - 3
@@ -576,6 +634,12 @@ class Application(QWidget):
         return xs, ys
 
     def show_expressions(self, results, matrix):
+        """
+        Displays mathematical expressions and the result text
+        :param results: the list of results for each equation
+        :param matrix: the matrix of predicted objects
+        :return:
+        """
         self.clear_labels()
         column_number = int(len(matrix[0]) / 3)
         rows_number = len(matrix)
@@ -597,6 +661,12 @@ class Application(QWidget):
         QGuiApplication.processEvents()
 
     def calculate_box_prediction_accuracy(self, boxes_classids_pred, name):
+        """
+        Calculates accuracy of bounding box prediction
+        :param boxes_classids_pred: the list of bounding boxes, class ids and predictions
+        :param name: the name of the image for recognition
+        :return:
+        """
         prediction_compare, len_annotation_boxes, incorrect_box_positions_count = compare_box_predictions(
             boxes_classids_pred, name)
         percent = prediction_compare / len_annotation_boxes
@@ -610,13 +680,20 @@ class Application(QWidget):
         self.overall_box_pred_correctness += percent
 
     def process_one_image(self, name, image=None, img_path=None):
+        """
+        Recognises objects on one image, draw bounding boxes and saves the image
+        :param name: the name of the image
+        :param image: the image for recognition
+        :param img_path: the path to the image  for recognition
+        :return:
+        """
         self.frame_id += 1
         print(name)
 
         if image is None:
             image = scan(to_crop=False, file_name=img_path)
         else:
-            image = scan(to_crop=True, image=rotate_img_opencv(image, 180))
+            image = scan(to_crop=True, image=rotate_image(image, 180))
 
         boxes_classids_pred, are_legitimate, results = self.make_prediction(image, name)
 
@@ -642,6 +719,10 @@ class Application(QWidget):
 
 
 def application():
+    """
+    Starts application
+    :return:
+    """
     app = QApplication(sys.argv)
     ex = Application()
     sys.exit(app.exec_())

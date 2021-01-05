@@ -1,19 +1,4 @@
-import imutils
-from PIL import Image
 import re
-
-
-def cut_image(x, y, width, height, image):
-    """ Cut the image by the border coordinates
-
-    :param x: x coordinate of the border's left side
-    :param y: y coordinate of the border's top side
-    :param width: the width of the border
-    :param height: the height of the border
-    :param image: the image to cut digit from
-    :return: image of a digit
-    """
-    return image[y:y+height, x:width+x]
 
 
 def get_xy_wh(coordinates, size):
@@ -30,25 +15,31 @@ def get_xy_wh(coordinates, size):
     return (x, y), width, height
 
 
-def rotate_img(img_path, angle):
-    img = Image.open(img_path)
-    img = img.rotate(angle, expand=1)
-    img.save(img_path)
-
-
-def rotate_img_opencv(image, angle):
-    return imutils.rotate(image, angle)
-
-
 def add_to_dictionary(dictionary, el):
+    """
+    Adds element to the dictionary
+    :param dictionary: the dictionary the element is added to
+    :param el: the element that added to te dictionary
+    :return:
+    """
     dictionary[el] = 1 + dictionary[el] if el in dictionary else 1
 
 
 def get_element_with_the_biggest_value(dictionary):
+    """
+    Get the element with the biggest value from the dictionary
+    :param dictionary: the dictionary the value is taken from
+    :return: the biggest value
+    """
     return [k for k, v in dictionary.items() if v == max(dictionary.values())]
 
 
-def get_delimeter(line):
+def get_delimiter(line):
+    """
+    Gets the delimiter from the equation line
+    :param line: the equation line
+    :return: the delimiter
+    """
     symbols = re.split('[0-9 ]', line)
     symbols = list(filter(None, symbols))
     symbols = remove_equation_symbol(symbols)
@@ -64,8 +55,8 @@ def get_delimeter(line):
 def remove_equation_symbol(symbols):
     """
     Removes equation symbols from list ogf symbols
-    :param symbols: 
-    :return:
+    :param symbols: the list of symbols
+    :return: the modified list of symbols
     """
     if '=' in symbols: symbols.remove('=')
     if '==' in symbols: symbols.remove('==')
@@ -80,5 +71,5 @@ def get_numbers_and_delimiter(expression):
     """
     numbers = re.split('[=+-/" /"]', expression)
     numbers = list(filter(None, numbers))
-    symbol = get_delimeter(expression)
+    symbol = get_delimiter(expression)
     return numbers, symbol

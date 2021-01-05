@@ -4,7 +4,7 @@ import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
 from application.handwritten_recogniser import detect_handwritten_digit
-from application.recognise_text import recognise_text
+from application.detect_equations import detect_mathematical_equation
 from utils import get_xy_wh, cut_image
 
 
@@ -38,7 +38,7 @@ def recognises_all_digits(objects, init_img_arr, filename, is_from_phone):
             continue
         image = rbg_image_to_grey(image)
         if obj['class_id'] == 0:
-            prediction = recognise_text(image, is_from_phone)
+            prediction = detect_mathematical_equation(image, is_from_phone)
             if len(prediction) == 0: continue
             draw.rectangle([xy, (w + xy[0], h + xy[1])], outline="green")
             equations_xy_coords.append([xy, h, w])
@@ -74,7 +74,7 @@ def recognise_one_image_at_a_time(objects, img, is_from_phone):
         image = cut_image(xy[0], xy[1], w, h, img)
         image = rbg_image_to_grey(image)
         if obj['class_id'] == 0:
-            prediction = recognise_text(image, is_from_phone)
+            prediction = detect_mathematical_equation(image, is_from_phone)
             if len(prediction) == 0:
                 continue
             plot_single_digit1(image, prediction)

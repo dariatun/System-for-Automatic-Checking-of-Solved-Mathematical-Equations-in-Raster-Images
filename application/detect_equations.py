@@ -2,85 +2,66 @@ from PIL import Image
 import pytesseract
 import cv2
 import os
-import numpy as np
 
 from application.constants import DEFAULT_SYMBOL_WIDTH_EQUATIONS, LEFT, RIGHT, BOTH, SYMBOL_WIDTH_MULTIPLIER, \
     ACCEPTABLE_LOOP_NUMBER
-from application.utils import cut_image, add_to_dictionary, get_element_with_the_biggest_value, get_numbers_and_delimiter
+from application.image_manipulation import cut_image, preprocess_equation_image
+from application.utils import add_to_dictionary, get_element_with_the_biggest_value, get_numbers_and_delimiter
 
 DEBUG = False
 DEBUG_WRITE = False
 
 
-def if_is_symbol(c):
-    return not (c == '+' or c == '-' or c == '=')
-
-
-def is_digit(c):
-    return '9' >= c >= '0'
-
-
-def is_number(num):
-    for c in num:
-        if not is_digit(c): return False
-    return True
-
-
 def check_first_digit(el):
+    """
+    If the first digit in the number is '0', it probably is a '5'
+    :param el: the element to check
+    :return: modified element
+    """
     if el[0] == '0' and len(el) > 1:
         el = '5' + el[1]
     return el
 
 
-def add_to_dict(dict, el):
-    if len(el) > 0:
-        el = check_first_digit(el)
-        add_to_dictionary(dict, el)
-
-
-def find_first(num, dict):
-    for i in range(0, len(num)):
-        if i < 2:
-            add_to_dict(dict, num[0:i + 1])
-            if num[i] == '4' and i != 0:
-                add_to_dict(dict, num[0:i - 1])
+def divide_number(number, first, second, delimiter):
+    """
+    If Tesseract recognise only one number with the number 4 in the middle,
+        will divide the number on equation of addition
+    :param number: the number to divide
+    :param first: the dictionary of first number
+    :param second: the dictionary of second number
+    :param delimiter: the dictionary of symbols
+    :return:
+    """
+    first_num = number[0]
+    second_num = ''
+    for i in range(1, len(number)):
+        if number[i] == '4':
+            second_num = number[i:-1]
+            break
         else:
-            add_to_dict(dict, num[i - 1] + num[i])
-            if num[i] == '4':
-                add_to_dict(dict, num[i - 2] + num[i - 1])
-
-
-def find_second(num, dict, symbol):
-    len_num = len(num)
-    for i in reversed(range(0, len_num)):
-        if len_num - i < 3:
-            add_to_dict(dict, num[i:len_num])
-            if num[i] == '4' and '-' not in symbol:
-                add_to_dict(dict, num[i + 1:len_num])
-        else:
-            add_to_dict(dict, num[i] + num[i + 1])
-            if num[i] == '4' and '-' not in symbol:
-                add_to_dict(dict, num[i + 1] + num[i + 2])
-
-
-def add_number(num, first, second, symbol):
-    num_len = len(num)
-    if num_len == 1 or num_len == 2:
-        add_to_dict(first, num)
-        add_to_dict(second, num)
-
-    else:
-        # TODO if there is a 4 in the middle it could be +
-        find_first(num, first)
-        find_second(num, second, symbol)
-        # add_number(num, first, second)
+            first_num += number[i]
+    if len(second_num) != 0:
+        add_to_dictionary(first, first_num)
+        add_to_dictionary(second, second_num)
+        add_delimiter_to_dict(delimiter, '+')
 
 
 def find_max_list(list):
+    """
+    Finds the longest string in the list
+    :param list: the list
+    :return: the longest element
+    """
     return max(list, key=len)
 
 
 def get_lines_predictions(image):
+    """
+    Get Tessetact prediction
+    :param image: image to predict
+    :return: predicted string
+    """
     filename = "temporary/{}.png".format(os.getpid())
     cv2.imwrite(filename, image)
 
@@ -97,6 +78,18 @@ def get_lines_predictions(image):
 
 
 def increase_size_of_an_image(image, x, y, w, h, prediction, loop_number, increase_to):
+    """
+    Increases the size of the bounding box on the given size
+    :param image: the image to increase
+    :param x: the x-coordinate of the bounding box
+    :param y: the y-coordinate of the bounding box
+    :param w: the width of the bounding box
+    :param h: the height of the bounding box
+    :param prediction: the predicted string
+    :param loop_number: the number of times this functions was called
+    :param increase_to: the side the bounding box will be increased to
+    :return: prediction and the bounding box
+    """
     pred_len = len(prediction)
     symbol_width = DEFAULT_SYMBOL_WIDTH_EQUATIONS
     symbol_width_multiplier = 1
@@ -106,20 +99,26 @@ def increase_size_of_an_image(image, x, y, w, h, prediction, loop_number, increa
     if left_x < 0:
         left_x = 0
     if increase_to == LEFT:
-        return recognise_text(image, left_x, y, w + x - left_x, h, loop_number + 1)
+        return detect_mathematical_equation(image, left_x, y, w + x - left_x, h, loop_number + 1)
     elif increase_to == RIGHT:
         right_x = w + symbol_width * symbol_width_multiplier
         if right_x > image.shape[0]:
             right_x = image.shape[0]
-        return recognise_text(image, x, y, right_x, h, loop_number + 1)
+        return detect_mathematical_equation(image, x, y, right_x, h, loop_number + 1)
     elif increase_to == BOTH:
         right_x = w + symbol_width * symbol_width_multiplier * 2
         if right_x > image.shape[0]:
             right_x = image.shape[0]
-        return recognise_text(image, left_x, y, right_x, h, loop_number + 1)
+        return detect_mathematical_equation(image, left_x, y, right_x, h, loop_number + 1)
 
 
 def add_delimiter_to_dict(dict, symbol):
+    """
+    Adds symbol to the dictionary
+    :param dict: dictionary
+    :param symbol:
+    :return:
+    """
     i = 0
     while i < len(symbol):
         c = symbol[i]
@@ -127,36 +126,17 @@ def add_delimiter_to_dict(dict, symbol):
         if c == '=': continue
         add_to_dictionary(dict, c)
 
-
-def preprocess_image(image):
-    ret, thresh = cv2.threshold(image, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-
-    if DEBUG and thresh.size != 0:
-        cv2.imshow("FULL IMAGE", thresh)
-        cv2.waitKey(0)
-
-    blured = cv2.GaussianBlur(thresh, (7, 7), 9)
-
-    if DEBUG and blured.size != 0:
-        cv2.imshow("Blured", blured)
-        cv2.waitKey(0)
-
-    blured = cv2.medianBlur(blured, 5)
-
-    if DEBUG and blured.size != 0:
-        cv2.imshow("more BLURED", blured)
-        cv2.waitKey(0)
-    result = blured
-    kernel = np.ones((5, 5), np.uint8)
-
-    erode = cv2.erode(result, kernel, iterations=5)
-    result = cv2.bitwise_or(result, erode)
-    result = cv2.morphologyEx(result, cv2.MORPH_OPEN, kernel)
-
-    return result
-
-
-def recognise_text(image, x, y, w, h, loop_number):
+def detect_mathematical_equation(image, x, y, w, h, loop_number):
+    """
+    Detects mathematical equation
+    :param image: the image to detect
+    :param x: the x-coordinate of the bounding box
+    :param y: the y-coordinate of the bounding box
+    :param w: the width of the bounding box
+    :param h: the height of the bounding box
+    :param loop_number: the number of times this functions was called
+    :return: prediction, bounding box
+    """
     is_legitimate = True
     if loop_number == 0:
         left_x = x - SYMBOL_WIDTH_MULTIPLIER * DEFAULT_SYMBOL_WIDTH_EQUATIONS
@@ -165,7 +145,7 @@ def recognise_text(image, x, y, w, h, loop_number):
         w += x - left_x
         x = left_x
     equation_image = cut_image(x, y, w, h, image)
-    equation_image = preprocess_image(equation_image)
+    equation_image = preprocess_equation_image(equation_image)
     if DEBUG and equation_image.size != 0:
         cv2.imshow("Equation", equation_image)
         cv2.waitKey(0)
@@ -197,6 +177,8 @@ def recognise_text(image, x, y, w, h, loop_number):
                 add_to_dictionary(second, numbers[1][:-1])
 
             add_delimiter_to_dict(delimiter, symbol)
+        elif len(numbers) == 1 and len(symbol) == 0 and len(numbers[0]) > 0:
+            divide_number(numbers[0])
 
     if DEBUG or DEBUG_WRITE:
         print(first, delimiter, second)
