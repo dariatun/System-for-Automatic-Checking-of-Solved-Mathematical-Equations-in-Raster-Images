@@ -1,5 +1,4 @@
 # System for Automatic Checking of Solved Mathematical Equations in Raster Images
-
 ## Instalation
 ```bash
 pip install -r requirements.txt
@@ -105,3 +104,6 @@ python3 start_application.py -e
 
 12. start_generating_dataset.py
     nd to test: ./darknet detector test obj.data yolov3-obj.cfg yolov3-obj_best.weights
+    
+## Final words
+The project was compiled and tested on Python 3.7.
