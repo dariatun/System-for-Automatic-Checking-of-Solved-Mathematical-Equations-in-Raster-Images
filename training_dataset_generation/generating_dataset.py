@@ -1,8 +1,13 @@
+import cv2
 from PIL import ImageFont, ImageDraw
 import loremipsum as li
+from PIL.Image import Image
+from training_dataset_generation.constants import *
 from training_dataset_generation.data_augemation import rotate_and_shear_img
 from utils import *
 import matplotlib
+
+from training_dataset_generation.utils import delete_old_files, save_labels, get_full_path, add_noise, get_digit
 
 matplotlib.use('Agg')
 
@@ -11,32 +16,15 @@ INPUTS_FROM_STDIN = False
 
 from MNIST_Dataset_Loader.mnist_loader import MNIST
 
-MNIST_PATH = '/Users/dariatunina/mach-lerinig/Handwritten-Digit-Recognition-using-Deep-Learning/CNN_Keras/MNIST_Dataset_Loader/'
-# path to the directory with the MNIST_Dataset_Loader
-#sys.path.append('/Users/dariatunina/mach-lerinig/Handwritten-Digit-Recognition-using-Deep-Learning/MNIST_Dataset_Loader/')
-
-#sys.path.append('/home.stud/tunindar/bachelorWork/MNIST_Dataset_Loader')
-#from mnist_loader import MNIST
-
-symbols = ['+', '-']
-fonts = ["fonts/times-new-roman.ttf", "fonts/arial.ttf"]
 bg_imgs = []
-MAX_NUMBER_OF_EQ_IN_COLUMN = 6
-MIN_NUMBER_OF_EQ_IN_COLUMN = 3
 
 
 def to_black_white(img):
-    # Resize and convert to grayscale
     img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    # Bilateral filter preserv edges
     img = cv2.bilateralFilter(img, 9, 75, 75)
-    # Create black and white image based on adaptive threshold
-    #images = cv2.adaptiveThreshold(images, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 71, 20)
-    # Median filter clears small details
     img = cv2.medianBlur(img, 3)
-    # Add black border in case that page is touching an image border
-    # images = cv2.copyMakeBorder(images, 5, 5, 5, 5, cv2.BORDER_CONSTANT, value=[0, 0, 0])
     return img
+
 
 def get_bg_path():
     """ Randomly chooses background image
@@ -236,7 +224,7 @@ def generate_images(path, digits_array):
         height = size[1]
         x = rd.randint(20, 40)
         y = rd.randint(40, 100)
-        font = ImageFont.truetype(fonts[rd.randint(0, 1)], rd.randint(35, 40))
+        font = ImageFont.truetype(FONTS[rd.randint(0, 1)], rd.randint(35, 40))
         color = rd.randint(0, 50)
 
         # add start text
@@ -255,7 +243,6 @@ def generate_images(path, digits_array):
 
         # save initial files
         img.save(file_path)
-        #save_labels(border, path, i, 0, size[0], size[1])
 
         # add handwritten digits
         length = len(border)
@@ -284,30 +271,22 @@ def generate_images(path, digits_array):
                 st_x += h_x
             count += 1
 
-
-        full_path = get_full_path(curr_img_path, curr_img_extension, 4)
         img.save(file_path)
-        # cv2.imwrite(file_path, images)
-        #save_labels(border, path, i, 4, size[0], size[1])
 
         # add noise
         img = cv2.imread(file_path)[:, :, ::-1]
-        full_path = get_full_path(curr_img_path, curr_img_extension, 2)
         add_noise(img, file_path)
-        #save_labels(border, path, i, 2, size[0], size[1])
 
         # change rotation
         img = cv2.imread(file_path)[:, :, ::-1]
         os.remove(file_path)
-        # images = cv2.cvtColor(images, cv2.COLOR_BGR2RGB)
         img, border = rotate_and_shear_img(img, border)
         img = to_black_white(img)
         cv2.imwrite(get_full_path(curr_img_path, curr_img_extension, 3), img)
-        # save_image(images, get_full_path(curr_img_path, curr_img_extension, 3))
         save_labels(border, path, i, 3, size[0], size[1])
 
 
-if __name__ == "__main__":
+def generate_dataset():
     get_bg_imgs('../images/bg_images')
     if INPUTS_FROM_STDIN:
         path = input('Enter path to save dataset at: ')

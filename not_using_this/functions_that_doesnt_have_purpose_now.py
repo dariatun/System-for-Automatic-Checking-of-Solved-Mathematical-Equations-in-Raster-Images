@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
-from application.handwritten_recogniser import recognise_handwritten_image
+from application.handwritten_recogniser import detect_handwritten_digit
 from application.recognise_text import recognise_text
 from utils import get_xy_wh, cut_image
 
@@ -54,7 +54,7 @@ def recognises_all_digits(objects, init_img_arr, filename, is_from_phone):
                 handwrttn_imgs = np.append(handwrttn_imgs, image, axis=0)
     predictions = None
     if handwrttn_imgs is not None:
-        _, predictions = recognise_handwritten_image(handwrttn_imgs)
+        _, predictions = detect_handwritten_digit(handwrttn_imgs)
         plot_full_image(predictions, handwrttn_xy_coords, draw)
     if len(equations_predictions) > 0:
         plot_full_image(equations_predictions, equations_xy_coords, draw)
@@ -80,7 +80,7 @@ def recognise_one_image_at_a_time(objects, img, is_from_phone):
             plot_single_digit1(image, prediction)
 
         else:
-            image, prediction = recognise_handwritten_image(prepare_handwritten_image(image))
+            image, prediction = detect_handwritten_digit(prepare_handwritten_image(image))
             plot_single_digit(image, prediction)
 
 
@@ -194,7 +194,7 @@ for obj in objects:
     h = box[3]
     filename = "{}.jpg".format(os.getpid())
     cv2.imwrite(filename, frame)
-    prediction = recognise_object(np.array(Image.open(filename)), x, y, w, h, class_id, self.FROM_PHONE)
+    prediction = detect_an_object(np.array(Image.open(filename)), x, y, w, h, class_id, self.FROM_PHONE)
     os.remove(filename)
     if prediction is None or prediction == "":
         objects.remove(obj)
@@ -289,7 +289,7 @@ if self.mode is not self.TEACHER_MODE:
     self.var.set("FPS: " + str(fps))
 
 if not self.leave_loop:
-    root.after(10000, self.clock)  # run itself again after 1000 ms
+    root.after(10000, self.process_one_image)  # run itself again after 1000 ms
 """
 
 """
@@ -303,7 +303,7 @@ def predict_object(self, objects, image):
         h = box[3]
         filename = "{}.jpg".format(os.getpid())
         cv2.imwrite(filename, image)
-        prediction = recognise_object(np.array(Image.open(filename)), x, y, w, h, class_id, self.FROM_PHONE)
+        prediction = detect_an_object(np.array(Image.open(filename)), x, y, w, h, class_id, self.FROM_PHONE)
         os.remove(filename)
         if prediction is None or prediction == "":
             objects.remove(obj)

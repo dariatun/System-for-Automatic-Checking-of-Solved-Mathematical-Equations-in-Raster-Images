@@ -10,7 +10,7 @@ from cnn.neural_network import CNN
 DEBUG = False
 
 
-def recognise_handwritten_image(image):
+def detect_handwritten_digit(image):
     """ Predict the image with the CNN model
 
     :param image: image of a digit

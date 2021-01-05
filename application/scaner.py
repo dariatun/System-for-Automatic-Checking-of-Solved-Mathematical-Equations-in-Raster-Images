@@ -95,7 +95,7 @@ def scan(to_crop, image=None, file_name=''):
     if to_crop:
         image = crop_image(image, 0.2, 0.2, 0.1, 0.1)
     orig_image = image
-
+    #return orig_image
     #cv2.imwrite('croped.jpg', image)
     edges = get_edges(image)
     # Finding contour of biggest rectangle

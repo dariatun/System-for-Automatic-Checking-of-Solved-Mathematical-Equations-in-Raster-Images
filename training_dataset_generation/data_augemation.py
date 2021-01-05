@@ -1,7 +1,7 @@
 import sys
 import numpy as np
 # path to the directory with the DataAugmentationForObjectDetection
-sys.path.append('/Users/dariatunina/mach-lerinig/DataAugmentationForObjectDetection')
+sys.path.append('../DataAugmentationForObjectDetection')
 # sys.path.append('/home.stud/tunindar/DataAugmentationForObjectDetection')
 
 from data_aug.data_aug import *

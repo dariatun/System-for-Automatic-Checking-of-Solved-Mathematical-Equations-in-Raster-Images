@@ -1,35 +1,36 @@
-import re
-import cv2
 from functools import cmp_to_key
 
 import numpy as np
-from PIL.Image import Image
 
-from application.constants import *
-from application.image_manipulation import recognise_object
-from utils.utils import get_numbers_and_delimeter
+from application.constants import CORRECT_ANSWER, UNDECIDED_ANSWER, INCORRECT_ANSWER, SAD, SMILE, SUCCESS_PERCENT, \
+    NEUTRAL, PREDICTION, OUTPUT_PATH, TXT, CLASS_ID, IS_LEGITIMATE, BOX, CONFIDENCE, POSSIBLE_OVERLAP_WIDTH, X, W, \
+    EQUATIONS, POSSIBLE_WIDTH_BETWEEN_CLOSE_OBJECTS, SAME_LINE_CHARACTER_SPACE
+from application.image_manipulation import detect_an_object
+from application.utils import get_numbers_and_delimiter
 
 
 def extract_boxes_confidences_classids(outputs, width, height):
+    """
+    Divide predicted objects on boxes, confidences and class ids
+    :param outputs: predicted objects
+    :param width: image's width
+    :param height: image's height
+    :return:
+    """
     boxes = []
     confidences = []
     classIDs = []
     indx = 0
     for output in outputs:
         for detection in output:
-            # Extract the scores, classid, and the confidence of the prediction
             scores = detection[5:]
             classID = np.argmax(scores)
             conf = scores[classID]
 
-            # Consider only the predictions that are above the confidence threshold
-            if conf > CONFIDENCE:  # (classID == 1 and conf > confidence) or (classID == 0 and conf > 0.4):
-                # Scale the bounding box back to t:
-                # Scale the bounding box back to the size of the image
+            if conf > CONFIDENCE:
                 box = detection[0:4] * np.array([width, height, width, height])
                 centerX, centerY, w, h = box.astype('int')
 
-                # Use the center coordinates, width and height to get the coordinates of the top left corner
                 x = int(centerX - (w / 2))
                 y = int(centerY - (h / 2))
                 box = [x, y, int(w), int(h)]
@@ -43,19 +44,32 @@ def extract_boxes_confidences_classids(outputs, width, height):
     return boxes, confidences, classIDs
 
 
-def get_modified_by_indxes(boxes, confidences, classIDs, idxs):
+def remove_similar_elements(boxes, classIDs, idxs):
+    """
+    Remove objects with similar bounding boxes
+    :param boxes: bounding boxes of predicted objects
+    :param classIDs: class ids of predicted objects
+    :param idxs: indexes of objects to "keep"
+    :return:
+    """
     new_boxes = []
-    new_confidences = []
     new_class_ids = []
     if len(idxs) > 0:
         for i in idxs.flatten():
             new_boxes.append(boxes[i])
-            new_confidences.append(confidences[i])
             new_class_ids.append(classIDs[i])
-    return new_boxes, new_confidences, new_class_ids
+    return new_boxes, new_class_ids
 
 
 def divide_by_lines(boxes, predictions, class_ids, are_legitimate):
+    """
+    Divide list of object's characteristic into lines
+    :param boxes: bounding boxes of predicted objects
+    :param predictions: predictions of objects
+    :param class_ids: class ids of predicted objects
+    :param are_legitimate: list og booleans that tells if equations are correct
+    :return: lines that the boxes are divided into
+    """
     height_indxs, lines = [], []
     for i in range(0, len(boxes)):
         y = boxes[i][1]
@@ -71,7 +85,18 @@ def divide_by_lines(boxes, predictions, class_ids, are_legitimate):
 
 
 def sort_by_x_coordinate(lines):
+    """
+    Sorts objects in lines by the x-coordinate of their bounding box
+    :param lines: the lines to sort
+    :return: sorted lines
+    """
     def cmp_function(a, b):
+        """
+        Sorts two objects
+        :param a: first object
+        :param b: second object
+        :return: boolean, the order of sort
+        """
         if a[CLASS_ID] == b[CLASS_ID]:
             return a[BOX][X] - b[BOX][X]
         elif a[CLASS_ID] == EQUATIONS:
@@ -89,21 +114,119 @@ def sort_by_x_coordinate(lines):
 
 
 def sort_by_y_coordinate(lines):
+    """
+    Sorts lines by the y-coordinate of their objects bounding box
+    :param lines: the lines to sort
+    :return: sorted lines
+    """
     return sorted(lines, key=lambda x: x[0][0][1])
 
 
 def add_appropriate_amount_of_empty_strings(matrix_line, handwritten_digit_count):
+    """
+    Add empty space to the line of objects
+    :param matrix_line: line of added objects
+    :param handwritten_digit_count: count of handwritten digits in a row
+    :return:
+    """
     if handwritten_digit_count == 0:
-        matrix_line.extend(['', ''])
+        matrix_line.extend(["", ""])
     elif handwritten_digit_count == 1:
-        matrix_line.append('')
+        matrix_line.append("")
 
 
 def last_three_elements_is_empty(length, matrix, i):
+    """
+    Checks if last three elements are empty
+    :param length: list's length
+    :param matrix: matrix that contains prediction
+    :param i: the x-coordinate of the matrix
+    :return: boolean, returns True if the last three elements are empty,
+                      returns False otherwise
+    """
     return len(matrix[i][length - 1]) == 0 and len(matrix[i][length - 2]) == 0 and len(matrix[i][length - 3]) == 0
 
 
+def add_handwritten_to_matrix(handwritten_digit_count, matrix_line, element, last_handwritten, last_equation):
+    """
+
+    :param handwritten_digit_count: count of handwritten digits in a row
+    :param matrix_line: list of added objects
+    :param element: handwritten digit element
+    :param last_handwritten: the last handwritten element added to the list
+    :param last_equation: the last equation element added to the list
+    :return: updated list of objects, updated count of handwritten digits in a row
+             updated the last handwritten element added to the list
+    """
+    if handwritten_digit_count == -1:
+        matrix_line.append("")
+        handwritten_digit_count = 0
+    elif last_handwritten is not None and last_equation is not None and\
+            element[BOX][X] - (last_handwritten[BOX][X] + last_handwritten[BOX][W]) >\
+            POSSIBLE_WIDTH_BETWEEN_CLOSE_OBJECTS * 2 and \
+            element[BOX][X] - POSSIBLE_WIDTH_BETWEEN_CLOSE_OBJECTS * 2 - (
+            last_equation[BOX][X] + last_equation[BOX][W]) > 0:
+        add_appropriate_amount_of_empty_strings(matrix_line, handwritten_digit_count)
+        matrix_line.append("")
+        handwritten_digit_count = 0
+    elif handwritten_digit_count == 2:
+        return matrix_line, handwritten_digit_count, last_handwritten
+    matrix_line.append(element[PREDICTION])
+    handwritten_digit_count += 1
+    last_handwritten = element
+    return matrix_line, handwritten_digit_count, last_handwritten
+
+
+def max_element_in_line(matrix):
+    """
+    Find the longest line of non-empty objects
+    :param matrix: matrix that contains object's prediction
+    :return: the longest line of non-empty objects
+    """
+    max_el = [0, 0]
+    for i in range(0, len(matrix)):
+        count = 0
+        length = len(matrix[i])
+        for j in range(0, length):
+            if len(matrix[i][j]) != 0:
+                count += 1
+        if max_el[0] < count:
+            if last_three_elements_is_empty(length, matrix, i):
+                max_el = [count, length - 3]
+            else:
+                max_el = [count, length]
+        elif max_el[0] == count and max_el[1] < length:
+            if last_three_elements_is_empty(length, matrix, i):
+                max_el = [count, length - 3]
+            else:
+                max_el = [count, length]
+    return max_el[1]
+
+
+def make_lines_one_length(matrix):
+    """
+    Make matrix's rows the same length
+    :param matrix: matrix that contains object's prediction
+    :return: updated matrix
+    """
+    row_len = max_element_in_line(matrix)
+    for i in range(0, len(matrix)):
+        if len(matrix[i]) == row_len:
+            continue
+        elif len(matrix[i]) > row_len:
+            matrix[i] = matrix[i][:row_len - len(matrix[i])]
+        else:
+            for j in range(0, row_len - len(matrix[i])):
+                matrix[i].append("")
+    return matrix
+
+
 def create_matrix_from_lines(lines):
+    """
+    Create matrix similar to the position of the expressions in the image
+    :param lines: lines of object's bounding boxes, class ids, predictions
+    :return: matrix of object's prediction
+    """
     matrix = []
     last_handwritten = None
     last_equation = None
@@ -122,70 +245,55 @@ def create_matrix_from_lines(lines):
                 handwritten_digit_count = 0
                 last_equation = element
             else:
-                if handwritten_digit_count == -1:
-                    matrix_line.append('')
-                    handwritten_digit_count = 0
-                elif last_handwritten is not None and last_equation is not None and element[BOX][X] - (
-                        last_handwritten[BOX][X] + last_handwritten[BOX][
-                    W]) > POSSIBLE_WIDTH_BETWEEN_CLOSE_OBJECTS * 2 and \
-                        element[BOX][X] - POSSIBLE_WIDTH_BETWEEN_CLOSE_OBJECTS * 2 - (
-                        last_equation[BOX][X] + last_equation[BOX][W]) > 0:
-                    add_appropriate_amount_of_empty_strings(matrix_line, handwritten_digit_count)
-                    matrix_line.append('')
-                    handwritten_digit_count = 0
-                elif handwritten_digit_count == 2:
-                    continue
-                matrix_line.append(element[PREDICTION])
-                handwritten_digit_count += 1
-                last_handwritten = element
+                matrix_line, handwritten_digit_count, last_handwritten = add_handwritten_to_matrix(
+                    handwritten_digit_count, matrix_line, element, last_handwritten, last_equation)
         add_appropriate_amount_of_empty_strings(matrix_line, handwritten_digit_count)
 
         matrix.append(matrix_line)
 
-    max_el = [0, 0]
-    for i in range(0, len(matrix)):
-        count = 0
-        length = len(matrix[i])
-        for j in range(0, length):
-            if len(matrix[i][j]) != 0:
-                count += 1
-        if max_el[0] < count:
-            if last_three_elements_is_empty(length, matrix, i):
-                max_el = [count, length - 3]
-            else:
-                max_el = [count, length]
-        elif max_el[0] == count and max_el[1] < length:
-            if last_three_elements_is_empty(length, matrix, i):
-                max_el = [count, length - 3]
-            else:
-                max_el = [count, length]
-    row_len = max_el[1]
-    # row_len = math.ceil(row_len / 3) * 3
-    for i in range(0, len(matrix)):
-        if len(matrix[i]) == row_len:
-            continue
-        elif len(matrix[i]) > row_len:
-            matrix[i] = matrix[i][:row_len - len(matrix[i])]
-        else:
-            for j in range(0, row_len - len(matrix[i])):
-                matrix[i].append('')
-
-    return matrix
+    return make_lines_one_length(matrix)
 
 
 def print_prediction_percent(approx_pred, all, file, string):
-    pred_percent = approx_pred / all
-    print('Prediction string comparacent percent ' + string + ': ' + str(pred_percent))
+    """
+    ----- EVALUATION -----
+    Prints prediction accuracy percent
+
+    :param approx_pred: count of correctly predicted predictions
+    :param all: count of all of the prediction
+    :param file: file that accuracy percent is added to
+    :param string: type of the prediction
+    :return: prediction accuracy percent
+    """
+    if all == 0:
+        pred_percent = 0
+    else:
+        pred_percent = approx_pred / all
+    print('Prediction string accuracy percent ' + string + ': ' + str(pred_percent))
     file.write(str(pred_percent))
     file.write('\n')
     return pred_percent
 
 
 def print_overall_prediction_correctness(value, dividend, name):
+    """
+        ----- EVALUATION -----
+    Prints overall prediction accuracy percent
+    :param value: the count of correctly predicted objects
+    :param dividend: the count of all objects
+    :param name: type of the prediction
+    :return:
+    """
     print('overall prediction correctness' + name + ': ' + str(value / dividend))
 
 
 def print_merged_answer(name, matrix):
+    """
+    Add predicted objects to the file
+    :param name: type of the prediction
+    :param matrix: matrix of objects predictions
+    :return:
+    """
     file = open(OUTPUT_PATH + name + '_answer' + TXT, 'w+')
     for i in range(0, len(matrix)):
         for j in range(0, len(matrix[0])):
@@ -196,6 +304,12 @@ def print_merged_answer(name, matrix):
 
 
 def get_handwritten_answer(handwritten_number_1, handwritten_number_2):
+    """
+    Calculates handwritten answer
+    :param handwritten_number_1: first handwritten digit
+    :param handwritten_number_2: second handwritten digit
+    :return: calculated answer
+    """
     if handwritten_number_1 == '' and handwritten_number_2 == '':
         return -1
     elif handwritten_number_2 == '':
@@ -208,7 +322,12 @@ def get_handwritten_answer(handwritten_number_1, handwritten_number_2):
 
 
 def get_correct_answer(equation):
-    numbers, symbol = get_numbers_and_delimeter(equation)
+    """
+    Calculate the answer to the equation
+    :param equation: equation to calculate
+    :return: answer to the equation
+    """
+    numbers, symbol = get_numbers_and_delimiter(equation)
 
     if symbol == '+':
         correct_answer = int(numbers[0]) + int(numbers[1])
@@ -219,6 +338,13 @@ def get_correct_answer(equation):
 
 
 def check_answer_of_one_equation(equation, handwritten_number_1, handwritten_number_2):
+    """
+    Check if the given answer is correct answer for the equation
+    :param equation: equation to check
+    :param handwritten_number_1: first handwritten digit
+    :param handwritten_number_2: second handwritten digit
+    :return: the decided correctness of the answer
+    """
     if len(equation) == 0:
         return UNDECIDED_ANSWER
 
@@ -234,6 +360,11 @@ def check_answer_of_one_equation(equation, handwritten_number_1, handwritten_num
 
 
 def confirm_results(prediction_matrix):
+    """
+    Check if the given answers are correct answers for all of the equation
+    :param prediction_matrix: matrix of the predicted objects
+    :return: list of the results
+    """
     result_list = []
     for i in range(0, len(prediction_matrix)):
         for j in range(0, len(prediction_matrix[i]), 3):
@@ -246,6 +377,13 @@ def confirm_results(prediction_matrix):
 
 
 def get_emotion(results):
+    """
+    Get emotion that will be shown based on the calculated results
+    :param results: list of all of the expressions results
+    :return: type of the emotion
+             number of the correct answers
+             number of the expressions with an answer
+    """
     success_count = 0
     undefined_count = 0
     defined_count = 0
@@ -261,16 +399,20 @@ def get_emotion(results):
     overall = len(results)
     if overall == 0 or defined_count == 0:
         return NEUTRAL, success_count, defined_count
-    elif success_count / defined_count > SUCCESS_PROCENT:
+    elif success_count / defined_count > SUCCESS_PERCENT:
         return SMILE, success_count, defined_count
     else:
         return SAD, success_count, defined_count
 
 
 def get_text_from_result(result):
-    text = ''
+    """
+    Get text that will be displayed near the expression
+    :param result: expression's result
+    :return: chosen text
+    """
     if result == CORRECT_ANSWER:
-        text = 'Ansewer is correct!'
+        text = 'Answer is correct!'
     elif result == INCORRECT_ANSWER:
         text = 'Check this, one more time!'
     else:
@@ -278,11 +420,19 @@ def get_text_from_result(result):
     return text
 
 
-def prediction_object(image, boxes, class_ids):
+def run_object_detection(image, boxes, class_ids):
+    """
+    Get the detection of the handwritten digits and mathematical equations
+    :param image: image to detect objects on
+    :param boxes: bounding boxes of localised objects
+    :param class_ids: class ids of localised objets
+    :return: predictions of the objects
+             the correctness of the mathematical equations
+    """
     predictions = [''] * len(boxes)
     are_legitimate = [True] * len(boxes)
     for indx in range(0, len(boxes)):
         box = boxes[indx]
-        predictions[indx], boxes[indx], are_legitimate[indx] = recognise_object(image, box[0], box[1], box[2],
-                                                                                   box[3], class_ids[indx])
+        predictions[indx], boxes[indx], are_legitimate[indx] = detect_an_object(image, box[0], box[1], box[2],
+                                                                                box[3], class_ids[indx])
     return predictions, are_legitimate

@@ -1,4 +1,3 @@
-import os
 
 CORRECT_ANSWER = 'Y'
 INCORRECT_ANSWER = 'N'
@@ -16,15 +15,14 @@ H = 3
 
 DEFAULT_SYMBOL_WIDTH = 160
 
-# variables for experimental part
-EXPERIMENTAL_PART = False
+TEST_DATA_ANNOTATIONS_PATH = 'testing_data/test_data_annotations/'
+TEST_DATA_BOX_ANNOTATIONS_PATH = 'testing_data/test_data_annotations/000/'
+TEST_DATA_PATH = 'testing_data/test_data/'
 
-COMPARE_POSSIBILITIES = True
+GENERATED_TEST_PATH = 'testing_data/generated_test_data/'
+GENERATED_TEST_ANNOTATION_PATH = 'testing_data/generated_test_data_annotation/'
 
-TEST_DATA_ANNOTATIONS_PATH = 'test_data_annotations/'
-TEST_DATA_BOX_ANNOTATIONS_PATH = 'test_data_annotations/000/'
 OUTPUT_PATH = 'output/'
-TEST_DATA_PATH = 'test_data/'
 
 NUMBER_OF_IMAGE_TYPES = 5
 NUMBER_OF_IMAGES = 20
@@ -42,9 +40,7 @@ TXT = '.txt'
 LABELS_PATH = 'model/obj.names'
 CONFIG_PATH = 'model/yolov3.cfg'
 WEIGHTS_PATH = 'model/yolov3.weights'
-BOOL_USE_GPU = False
-BOOL_SAVE = True
-BOOL_SHOW = False
+
 CONFIDENCE = 0.1
 THRESHOLD = 0.05
 
@@ -55,17 +51,16 @@ PREDICTION = 1
 CLASS_ID = 2
 IS_LEGITIMATE = 3
 
-
 POSSIBLE_OVERLAP_WIDTH = 50
 POSSIBLE_WIDTH_BETWEEN_CLOSE_OBJECTS = 100
 
 # application modes
-EXPERIMENTAL_MODE = 0
+EVALUATIONAL_MODE = 0
 SIMPLE_MODE = 1
-ALL_IN_ONE_MODE = 2
+DETAILED_MODE = 2
 VIDEO_MODE = 3
 
-SUCCESS_PROCENT = 0.5
+SUCCESS_PERCENT = 0.5
 
 SMILE = 0
 NEUTRAL = 1
@@ -93,5 +88,15 @@ WINDOW_HEIGHT = 750
 
 DEFAULT_IMG_NAME = 'capture'
 
-CNN_KERAS_PATH = '/Users/dariatunina/mach-lerinig/Handwritten-Digit-Recognition-using-Deep-Learning/CNN_Keras'
-SAVED_WEIGHTS_PATH = 'cnn_weights.hdf5'
+
+EXPRESSIONS_LBL = 0
+TEXT_RESULTS_LBL = 1
+FINAL_TEXT_LBL = 2
+
+# text recogniser
+DEFAULT_SYMBOL_WIDTH_EQUATIONS = 80
+LEFT = 0
+RIGHT = 1
+BOTH = 2
+SYMBOL_WIDTH_MULTIPLIER = 1
+ACCEPTABLE_LOOP_NUMBER = 1
